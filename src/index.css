@@ -1,0 +1,159 @@
+@import "tailwindcss";
+
+@theme {
+  /* ── Earth Greens ───────────────────────── */
+  --color-earth-50: #f6f7f0;
+  --color-earth-100: #e8ebd6;
+  --color-earth-200: #d3d9b0;
+  --color-earth-300: #b6c182;
+  --color-earth-400: #9aab5c;
+  --color-earth-500: #7d8f40;
+  --color-earth-600: #617130;
+  --color-earth-700: #4b5728;
+  --color-earth-800: #3e4724;
+  --color-earth-900: #363d22;
+  --color-earth-950: #1b200f;
+
+  /* ── Forest ─────────────────────────────── */
+  --color-forest-50: #effaf3;
+  --color-forest-100: #d8f3e1;
+  --color-forest-200: #b4e6c7;
+  --color-forest-300: #82d3a5;
+  --color-forest-400: #4fba7f;
+  --color-forest-500: #2d9f63;
+  --color-forest-600: #1e804f;
+  --color-forest-700: #186641;
+  --color-forest-800: #165136;
+  --color-forest-900: #13432e;
+  --color-forest-950: #0a261a;
+
+  /* ── Harvest Gold ───────────────────────── */
+  --color-harvest-50: #fdf8ef;
+  --color-harvest-100: #faeed4;
+  --color-harvest-200: #f4daa8;
+  --color-harvest-300: #edc071;
+  --color-harvest-400: #e5a03c;
+  --color-harvest-500: #df8823;
+  --color-harvest-600: #d06d19;
+  --color-harvest-700: #ac5217;
+  --color-harvest-800: #89411a;
+  --color-harvest-900: #703718;
+  --color-harvest-950: #3c1a0a;
+
+  /* ── Soil Brown ─────────────────────────── */
+  --color-soil-50: #f9f6f2;
+  --color-soil-100: #f0e8de;
+  --color-soil-200: #e0cfbb;
+  --color-soil-300: #cdb191;
+  --color-soil-400: #bc946d;
+  --color-soil-500: #b07f56;
+  --color-soil-600: #a36c4b;
+  --color-soil-700: #87553f;
+  --color-soil-800: #6f4738;
+  --color-soil-900: #5b3b30;
+  --color-soil-950: #311e18;
+
+  /* ── Fonts ──────────────────────────────── */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* ── Global Styles ──────────────────────────────────────────────── */
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-800 font-sans antialiased;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-sm border border-white/50 shadow-lg rounded-2xl;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm
+           focus:outline-none focus:ring-2 focus:ring-forest-400 focus:border-transparent
+           transition-all duration-200 hover:border-forest-300;
+  }
+
+  .btn-primary {
+    @apply px-6 py-3 bg-gradient-to-r from-forest-600 to-forest-500 text-white font-semibold
+           rounded-xl shadow-md hover:shadow-lg hover:from-forest-700 hover:to-forest-600
+           transition-all duration-300 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 bg-white text-forest-700 font-semibold border-2 border-forest-200
+           rounded-xl hover:bg-forest-50 hover:border-forest-300
+           transition-all duration-300 active:scale-[0.98];
+  }
+
+  .metric-card {
+    @apply p-4 rounded-xl border transition-all duration-300 hover:shadow-md;
+  }
+
+  .sidebar-link {
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium
+           transition-all duration-200 cursor-pointer;
+  }
+
+  .sidebar-link-active {
+    @apply bg-white/20 text-white shadow-sm;
+  }
+
+  .sidebar-link-inactive {
+    @apply text-forest-100 hover:bg-white/10 hover:text-white;
+  }
+}
+
+/* ── Custom Scrollbar ───────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #c1c9bf;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9aab5c;
+}
+
+/* ── Smooth Scroll ──────────────────────────────────────────────── */
+
+* {
+  scroll-behavior: smooth;
+}
+
+/* ── Animations ─────────────────────────────────────────────────── */
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse-gentle {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.7; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.animate-slide-in {
+  animation: slideInRight 0.4s ease-out forwards;
+}
+
+.animate-pulse-gentle {
+  animation: pulse-gentle 2s ease-in-out infinite;
+}
