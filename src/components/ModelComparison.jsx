@@ -4,29 +4,105 @@ import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Legend,
 } from 'recharts';
 import {
-  GitCompare, Zap, Trophy, CheckCircle2, AlertCircle,
-  ArrowRight, Star, TrendingUp, TrendingDown,
+  GitCompare, Zap, Trophy, AlertCircle,
+  Star, XCircle,
 } from 'lucide-react';
 import PredictionForm, { DEFAULT_INPUTS } from './PredictionForm';
-import { getModelComparison, MODEL_VARIANTS } from '../services/mockInference';
+import { getModelComparison, humanizeApiError } from '../services/apiService';
+
+const VARIANT_STYLE = {
+  baseline: { color: '#dc2626', name: 'Baseline' },
+  feature_engineering: { color: '#2563eb', name: 'Feature Eng.' },
+  advanced: { color: '#16a34a', name: 'Advanced' },
+};
+
+function PredictedValue({ model, task }) {
+  if (!model.prediction) {
+    return (
+      <div className="flex items-center gap-1.5 text-xs text-amber-600">
+        <XCircle size={13} />
+        {model.error || (model.variant === 'advanced' && task === 'crop_type'
+          ? 'Not available'
+          : 'Unavailable / guarded')}
+      </div>
+    );
+  }
+  const pred = model.prediction;
+  if (task === 'crop_type') {
+    return (
+      <>
+        <p className="text-xs text-gray-500">Predicted Crop</p>
+        <p className="text-lg font-bold text-gray-900">🌾 {pred.predictedCrop}</p>
+        <p className="text-xs text-gray-500 mt-1">
+          Confidence: {(pred.confidence * 100).toFixed(1)}%
+        </p>
+      </>
+    );
+  }
+  if (task === 'yield_level') {
+    return (
+      <>
+        <p className="text-xs text-gray-500">Predicted Yield Level</p>
+        <p className="text-lg font-bold text-gray-900">{pred.predictedLevel}</p>
+        <p className="text-xs text-gray-500 mt-1">
+          P(High) {(pred.probabilityHigh * 100).toFixed(1)}% · P(Low) {(pred.probabilityLow * 100).toFixed(1)}%
+        </p>
+      </>
+    );
+  }
+  return (
+    <>
+      <p className="text-xs text-gray-500">Predicted Yield</p>
+      <p className="text-lg font-bold text-gray-900">{Number(pred.predictedYield).toFixed(2)} tons</p>
+    </>
+  );
+}
+
+function MetricValue({ task, metricKey, value }) {
+  if (value == null) return <span className="text-xs text-gray-400">—</span>;
+  let display;
+  if (task === 'crop_type' && ['accuracy', 'f1', 'precision', 'recall'].includes(metricKey)) {
+    display = `${(value * 100).toFixed(1)}%`;
+  } else if (task === 'yield_level' && ['accuracy', 'f1', 'precision', 'recall'].includes(metricKey)) {
+    display = `${(value * 100).toFixed(1)}%`;
+  } else {
+    display = Number(value).toFixed(3);
+  }
+  return <span className="text-xs font-mono font-bold text-gray-800">{display}</span>;
+}
 
 function ComparisonTable({ comparison, task }) {
-  const { models, bestModel, comparisonMetrics } = comparison;
+  const { models, best_model: bestModel, comparison_metrics: comparisonMetrics } = comparison;
+  const available = models.filter(m => m.available);
+  const bestName = bestModel ? (VARIANT_STYLE[bestModel]?.name || bestModel) : null;
+
+  const metricRows = (comparisonMetrics || []);
+
+  // For radar: only classification metrics (0..1) or use available metric rows that are percentages.
+  const radarData = comparisonMetrics
+    ?.filter(row => !row.metric.includes('RMSE') && !row.metric.includes('MAE'))
+    .map(row => {
+      const out = { metric: row.metric };
+      for (const v of ['baseline', 'feature_engineering', 'advanced']) {
+        if (row[v] != null) out[v] = row[v];
+      }
+      return out;
+    }) || [];
 
   return (
     <div className="space-y-6">
       {/* Best Model Banner */}
-      <div className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-r from-forest-50 to-earth-50 border border-forest-200">
-        <Trophy size={22} className="text-harvest-500" />
-        <div>
-          <p className="text-sm font-bold text-forest-800">
-            🏆 Best Performing Model: {MODEL_VARIANTS.find(v => v.id === bestModel)?.name}
-          </p>
-          <p className="text-xs text-forest-600">
-            Based on {task === 'crop_type' ? 'Accuracy & F1-Score' : 'R² Score & RMSE'} evaluation
-          </p>
+      {bestModel && (
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-r from-forest-50 to-earth-50 border border-forest-200">
+          <Trophy size={22} className="text-harvest-500" />
+          <div>
+            <p className="text-sm font-bold text-forest-800">🏆 Best Performing Model: {bestName}</p>
+            <p className="text-xs text-forest-600">
+              Determined from real backend metrics (Accuracy/F1 or R²).
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Side-by-Side Results */}
       <div className="grid md:grid-cols-3 gap-4">
@@ -44,65 +120,45 @@ function ComparisonTable({ comparison, task }) {
                 <div className="flex items-center gap-2">
                   <div
                     className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: model.color }}
+                    style={{ backgroundColor: VARIANT_STYLE[model.variant]?.color || '#999' }}
                   />
                   <span className="text-sm font-bold text-gray-800">{model.name}</span>
                 </div>
-                {isBest && (
+                {model.available === false ? (
+                  <span className="flex items-center gap-1 text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
+                    <XCircle size={12} /> Unavailable
+                  </span>
+                ) : isBest ? (
                   <span className="flex items-center gap-1 text-xs font-bold text-forest-600 bg-forest-50 px-2 py-1 rounded-full">
                     <Star size={12} className="fill-forest-500" /> Best
                   </span>
-                )}
+                ) : null}
               </div>
 
               {/* Prediction Result */}
               <div className="p-3 rounded-lg bg-gray-50 mb-4">
-                {task === 'crop_type' ? (
-                  <>
-                    <p className="text-xs text-gray-500">Predicted Crop</p>
-                    <p className="text-lg font-bold text-gray-900">
-                      🌾 {model.prediction.predictedCrop}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Confidence: {(model.prediction.confidence * 100).toFixed(1)}%
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-xs text-gray-500">Predicted Yield</p>
-                    <p className="text-lg font-bold text-gray-900">
-                      {model.prediction.predictedYield.toFixed(2)} tons
-                    </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                        model.prediction.yieldLevel === 'High' ? 'bg-green-100 text-green-700' :
-                        model.prediction.yieldLevel === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-red-100 text-red-700'
-                      }`}>
-                        {model.prediction.yieldLevel}
-                      </span>
-                    </div>
-                  </>
-                )}
+                <PredictedValue model={model} task={task} />
               </div>
 
               {/* Metrics */}
               <div className="space-y-2">
-                {task === 'crop_type' ? (
-                  <>
-                    <MetricRow label="Accuracy" value={model.metrics.accuracy} isPercent />
-                    <MetricRow label="F1-Score" value={model.metrics.f1Score} isPercent />
-                    <MetricRow label="Precision" value={model.metrics.precision} isPercent />
-                    <MetricRow label="Recall" value={model.metrics.recall} isPercent />
-                  </>
+                {model.metrics ? (
+                  task === 'crop_type' || task === 'yield_level' ? (
+                    <>
+                      <MetricRow label="Accuracy" value={model.metrics.accuracy} task={task} metricKey="accuracy" />
+                      <MetricRow label="F1-Score" value={model.metrics.f1} task={task} metricKey="f1" />
+                      <MetricRow label="Precision" value={model.metrics.precision} task={task} metricKey="precision" />
+                      <MetricRow label="Recall" value={model.metrics.recall} task={task} metricKey="recall" />
+                    </>
+                  ) : (
+                    <>
+                      <MetricRow label="R² Score" value={model.metrics.r2} task={task} metricKey="r2" />
+                      <MetricRow label="RMSE" value={model.metrics.rmse} task={task} metricKey="rmse" />
+                      <MetricRow label="MAE" value={model.metrics.mae} task={task} metricKey="mae" />
+                    </>
+                  )
                 ) : (
-                  <>
-                    <MetricRow label="R² Score" value={model.metrics.r2Score} isPercent={false} higherIsBetter />
-                    <MetricRow label="RMSE" value={model.metrics.rmse} isPercent={false} higherIsBetter={false} />
-                    <MetricRow label="MAE" value={model.metrics.mae} isPercent={false} higherIsBetter={false} />
-                    <MetricRow label="Yield Acc." value={model.metrics.classificationAccuracy} isPercent />
-                    <MetricRow label="Yield F1" value={model.metrics.classificationF1} isPercent />
-                  </>
+                  <p className="text-xs text-gray-400">No metrics available.</p>
                 )}
               </div>
             </div>
@@ -111,83 +167,54 @@ function ComparisonTable({ comparison, task }) {
       </div>
 
       {/* Comparison Charts */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Bar Chart Comparison */}
-        <div className="glass-card p-5">
-          <h4 className="text-sm font-semibold text-gray-800 mb-4">
-            Metrics Comparison (Bar Chart)
-          </h4>
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={comparisonMetrics} barCategoryGap="20%">
-                <XAxis
-                  dataKey="metric"
-                  tick={{ fontSize: 10, fill: '#374151' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 10, fill: '#9ca3af' }}
-                  axisLine={false}
-                  tickLine={false}
-                  domain={[0, 'auto']}
-                />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: '12px',
-                    border: '1px solid #e5e7eb',
-                    fontSize: '12px',
-                  }}
-                />
-                <Legend
-                  wrapperStyle={{ fontSize: '11px' }}
-                  formatter={(value) => {
-                    const v = MODEL_VARIANTS.find(m => m.id === value);
-                    return v ? v.name : value;
-                  }}
-                />
-                <Bar dataKey="baseline" fill="#dc2626" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="feature_eng" fill="#2563eb" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="advanced" fill="#16a34a" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+      {available.length > 1 && (
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Bar Chart Comparison */}
+          <div className="glass-card p-5">
+            <h4 className="text-sm font-semibold text-gray-800 mb-4">
+              Metrics Comparison (Bar Chart)
+            </h4>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={metricRows} barCategoryGap="20%">
+                  <XAxis dataKey="metric" tick={{ fontSize: 10, fill: '#374151' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} domain={[0, 'auto']} />
+                  <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e5e7eb', fontSize: '12px' }} />
+                  <Legend wrapperStyle={{ fontSize: '11px' }} />
+                  {available.map(m => (
+                    <Bar key={m.variant} dataKey={m.variant} name={VARIANT_STYLE[m.variant]?.name || m.variant}
+                      fill={VARIANT_STYLE[m.variant]?.color || '#999'} radius={[4, 4, 0, 0]} />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
 
-        {/* Radar Chart Comparison */}
-        <div className="glass-card p-5">
-          <h4 className="text-sm font-semibold text-gray-800 mb-4">
-            Performance Radar
-          </h4>
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <RadarChart
-                data={comparisonMetrics.filter(m => !m.lowerIsBetter).map(m => ({
-                  metric: m.metric,
-                  baseline: m.baseline,
-                  feature_eng: m.feature_eng,
-                  advanced: m.advanced,
-                }))}
-                cx="50%" cy="50%" outerRadius="70%"
-              >
-                <PolarGrid stroke="#e5e7eb" />
-                <PolarAngleAxis dataKey="metric" tick={{ fontSize: 10, fill: '#6b7280' }} />
-                <PolarRadiusAxis angle={90} domain={[0, 1]} tick={{ fontSize: 9, fill: '#9ca3af' }} />
-                <Radar name="Baseline" dataKey="baseline" stroke="#dc2626" fill="#dc2626" fillOpacity={0.1} strokeWidth={2} />
-                <Radar name="Feature Eng." dataKey="feature_eng" stroke="#2563eb" fill="#2563eb" fillOpacity={0.1} strokeWidth={2} />
-                <Radar name="Advanced" dataKey="advanced" stroke="#16a34a" fill="#16a34a" fillOpacity={0.15} strokeWidth={2} />
-                <Legend wrapperStyle={{ fontSize: '11px' }} />
-              </RadarChart>
-            </ResponsiveContainer>
+          {/* Radar Chart Comparison */}
+          <div className="glass-card p-5">
+            <h4 className="text-sm font-semibold text-gray-800 mb-4">Performance Radar</h4>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
+                  <PolarGrid stroke="#e5e7eb" />
+                  <PolarAngleAxis dataKey="metric" tick={{ fontSize: 10, fill: '#6b7280' }} />
+                  <PolarRadiusAxis angle={90} domain={[0, 1]} tick={{ fontSize: 9, fill: '#9ca3af' }} />
+                  {available.map(m => (
+                    <Radar key={m.variant} name={VARIANT_STYLE[m.variant]?.name || m.variant}
+                      dataKey={m.variant} stroke={VARIANT_STYLE[m.variant]?.color || '#999'}
+                      fill={VARIANT_STYLE[m.variant]?.color || '#999'} fillOpacity={0.1} strokeWidth={2} />
+                  ))}
+                  <Legend wrapperStyle={{ fontSize: '11px' }} />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Detailed Comparison Table */}
       <div className="glass-card p-5 overflow-x-auto">
-        <h4 className="text-sm font-semibold text-gray-800 mb-4">
-          Detailed Metrics Comparison Table
-        </h4>
+        <h4 className="text-sm font-semibold text-gray-800 mb-4">Detailed Metrics Comparison Table</h4>
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200">
@@ -195,45 +222,34 @@ function ComparisonTable({ comparison, task }) {
               {models.map(m => (
                 <th key={m.variant} className="text-center py-3 px-4">
                   <div className="flex items-center justify-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: m.color }} />
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: VARIANT_STYLE[m.variant]?.color || '#999' }} />
                     <span className="font-semibold text-gray-700">{m.name}</span>
+                    {m.available === false && <XCircle size={12} className="text-amber-500" />}
                   </div>
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {comparisonMetrics.map((row, i) => {
-              const values = models.map(m => row[m.variant]);
-              const bestValue = row.lowerIsBetter
-                ? Math.min(...values)
-                : Math.max(...values);
-
-              return (
-                <tr key={i} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                  <td className="py-3 px-4 font-medium text-gray-700">
-                    {row.metric}
-                    {row.lowerIsBetter && (
-                      <span className="text-xs text-gray-400 ml-1">(↓ lower = better)</span>
+            {metricRows.map((row, i) => (
+              <tr key={i} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                <td className="py-3 px-4 font-medium text-gray-700">{row.metric}</td>
+                {models.map(m => (
+                  <td key={m.variant} className="py-3 px-4 text-center">
+                    {row[m.variant] == null ? (
+                      <span className="text-xs text-gray-400">—</span>
+                    ) : (
+                      <span className={`font-mono font-semibold ${
+                        Number(row[m.variant]) === bestCellValue(metricRows, row, m)
+                          ? 'text-forest-600 bg-forest-50 px-2 py-1 rounded-md' : 'text-gray-600'
+                      }`}>
+                        {formatMetricCell(row.metric, row[m.variant])}
+                      </span>
                     )}
                   </td>
-                  {models.map(m => {
-                    const val = row[m.variant];
-                    const isBestVal = val === bestValue;
-                    return (
-                      <td key={m.variant} className="py-3 px-4 text-center">
-                        <span className={`font-mono font-semibold ${
-                          isBestVal ? 'text-forest-600 bg-forest-50 px-2 py-1 rounded-md' : 'text-gray-600'
-                        }`}>
-                          {typeof val === 'number' ? val.toFixed(3) : val}
-                        </span>
-                        {isBestVal && <Star size={10} className="inline ml-1 text-harvest-500 fill-harvest-400" />}
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
+                ))}
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
@@ -241,34 +257,48 @@ function ComparisonTable({ comparison, task }) {
   );
 }
 
-function MetricRow({ label, value, isPercent = false, higherIsBetter = true }) {
-  const displayValue = isPercent ? `${(value * 100).toFixed(1)}%` : value.toFixed(3);
+function bestCellValue(rows, row, model) {
+  const vals = rows.map(r => r[model.variant]).filter(v => v != null);
+  if (vals.length === 0) return null;
+  const lowerIsBetter = row.metric === 'RMSE' || row.metric === 'MAE';
+  return lowerIsBetter ? Math.min(...vals) : Math.max(...vals);
+}
+
+function formatMetricCell(metric, value) {
+  if (metric === 'RMSE' || metric === 'MAE') return Number(value).toFixed(3);
+  return `${(Number(value) * 100).toFixed(1)}%`;
+}
+
+function MetricRow({ label, value, task, metricKey }) {
   return (
     <div className="flex items-center justify-between py-1.5 border-b border-gray-50">
       <span className="text-xs text-gray-600">{label}</span>
-      <span className="text-xs font-mono font-bold text-gray-800">{displayValue}</span>
+      <MetricValue task={task} metricKey={metricKey} value={value} />
     </div>
   );
 }
 
 export default function ModelComparison() {
   const [inputs, setInputs] = useState({ ...DEFAULT_INPUTS });
-  const [modelVariant, setModelVariant] = useState('advanced');
+  const [modelVariant, setModelVariant] = useState('feature_engineering');
   const [task, setTask] = useState('crop_type');
   const [comparison, setComparison] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const handleCompare = useCallback(() => {
+  const handleCompare = useCallback(async () => {
     setLoading(true);
     setComparison(null);
-    setTimeout(() => {
-      const result = getModelComparison(
-        task === 'crop_yield' ? inputs : { ...inputs },
-        task
-      );
+    setError(null);
+    try {
+      const result = await getModelComparison(inputs, task);
       setComparison(result);
+    } catch (e) {
+      setError(humanizeApiError(e));
+      setComparison(null);
+    } finally {
       setLoading(false);
-    }, 1200);
+    }
   }, [inputs, task]);
 
   return (
@@ -280,11 +310,9 @@ export default function ModelComparison() {
             <GitCompare size={22} className="text-white" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-              Model Comparison
-            </h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Model Comparison</h1>
             <p className="text-sm text-gray-500">
-              Side-by-Side · Compare Baseline, Feature Engineering & Advanced models
+              Side-by-Side · Compare Baseline, Feature Engineering &amp; Advanced models
             </p>
           </div>
         </div>
@@ -296,15 +324,26 @@ export default function ModelComparison() {
         <div>
           <p className="text-sm font-medium text-blue-800">Compare All Models</p>
           <p className="text-xs text-blue-600 mt-0.5">
-            Run predictions across all three model variants simultaneously and compare their
-            performance metrics (R², RMSE, MAE for regression; Accuracy, F1-Score for classification)
-            in structured comparison tables and charts.
+            Run predictions across all real available model variants and compare their
+            performance metrics directly from the backend. Unavailable/guarded variants
+            are clearly marked.
           </p>
         </div>
       </div>
 
+      {/* Error banner */}
+      {error && (
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-red-50 border border-red-200">
+          <AlertCircle size={18} className="text-red-500 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-red-700">Comparison failed</p>
+            <p className="text-xs text-red-600 mt-0.5">{error}</p>
+          </div>
+        </div>
+      )}
+
       {/* Task Selector */}
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
         <button
           onClick={() => { setTask('crop_type'); setComparison(null); }}
           className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
@@ -313,7 +352,17 @@ export default function ModelComparison() {
               : 'bg-white text-gray-600 border border-gray-200 hover:border-forest-300'
           }`}
         >
-          🌱 Crop Type (Classification)
+          🌱 Crop Type
+        </button>
+        <button
+          onClick={() => { setTask('yield_level'); setComparison(null); }}
+          className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+            task === 'yield_level'
+              ? 'bg-forest-600 text-white shadow-md'
+              : 'bg-white text-gray-600 border border-gray-200 hover:border-forest-300'
+          }`}
+        >
+          📊 Yield Level
         </button>
         <button
           onClick={() => { setTask('crop_yield'); setComparison(null); }}
@@ -323,11 +372,11 @@ export default function ModelComparison() {
               : 'bg-white text-gray-600 border border-gray-200 hover:border-harvest-300'
           }`}
         >
-          📊 Crop Yield (Regression)
+          📈 Crop Yield
         </button>
       </div>
 
-      {/* Form - reuse but hide model variant selector since we compare all */}
+      {/* Form - compare all variants */}
       <PredictionForm
         inputs={inputs}
         setInputs={setInputs}
@@ -335,8 +384,10 @@ export default function ModelComparison() {
         setModelVariant={setModelVariant}
         onPredict={handleCompare}
         loading={loading}
-        showCropType={task === 'crop_yield'}
+        showCropType={task !== 'crop_type'}
+        hideVariants
         taskLabel="Compare All Models"
+        task={task}
       />
 
       {/* Loading */}
@@ -345,7 +396,6 @@ export default function ModelComparison() {
           <div className="text-center">
             <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
             <p className="text-sm font-medium text-gray-600">Running all models...</p>
-            <p className="text-xs text-gray-400 mt-1">Baseline → Feature Eng → Advanced</p>
           </div>
         </div>
       )}

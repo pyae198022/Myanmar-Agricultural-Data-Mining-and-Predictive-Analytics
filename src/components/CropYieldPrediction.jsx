@@ -1,23 +1,46 @@
-import React, { useState, useCallback } from 'react';
-import { BarChart3, Zap } from 'lucide-react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { BarChart3, Zap, AlertCircle } from 'lucide-react';
 import PredictionForm, { DEFAULT_INPUTS } from './PredictionForm';
 import CropYieldResults from './CropYieldResults';
-import { predictCropYield } from '../services/mockInference';
+import {
+  predictCropYield, predictYieldLevel, fetchHealth, humanizeApiError,
+} from '../services/apiService';
 
 export default function CropYieldPrediction() {
   const [inputs, setInputs] = useState({ ...DEFAULT_INPUTS });
-  const [modelVariant, setModelVariant] = useState('advanced');
+  const [modelVariant, setModelVariant] = useState('feature_engineering');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [availability, setAvailability] = useState(null);
 
-  const handlePredict = useCallback(() => {
+  useEffect(() => {
+    fetchHealth()
+      .then(h => setAvailability(h.models_loaded?.crop_yield || null))
+      .catch(() => setAvailability(null));
+  }, []);
+
+  const handlePredict = useCallback(async () => {
     setLoading(true);
     setResult(null);
-    setTimeout(() => {
-      const prediction = predictCropYield(inputs, modelVariant);
-      setResult(prediction);
+    setError(null);
+    try {
+      const regression = await predictCropYield(inputs, modelVariant);
+      // Yield level (binary Low/High) comes from the real yield-level model.
+      let level = null;
+      try {
+        level = await predictYieldLevel(inputs, modelVariant);
+      } catch {
+        // If the yield-level variant is unavailable, still show regression output.
+        level = null;
+      }
+      setResult({ ...regression, yieldLevelInfo: level });
+    } catch (e) {
+      setError(humanizeApiError(e));
+      setResult(null);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   }, [inputs, modelVariant]);
 
   return (
@@ -33,7 +56,7 @@ export default function CropYieldPrediction() {
               Crop Yield Prediction
             </h1>
             <p className="text-sm text-gray-500">
-              Regression + Classification · Predict production tonnage & yield level
+              Regression + Classification · Predict production tonnage &amp; yield level
             </p>
           </div>
         </div>
@@ -45,12 +68,23 @@ export default function CropYieldPrediction() {
         <div>
           <p className="text-sm font-medium text-harvest-800">How it works</p>
           <p className="text-xs text-harvest-600 mt-0.5">
-            Select a crop type and enter environmental conditions. The model performs both
-            regression (predicting production in tons) and classification (categorizing yield
-            as Low/Medium/High) with confidence intervals and performance metrics.
+            Select a crop type and enter environmental conditions. The model performs
+            regression (predicting yield in tons) and classification (categorizing yield
+            as Low or High). The backend supplies all values — nothing is fabricated.
           </p>
         </div>
       </div>
+
+      {/* Error banner */}
+      {error && (
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-red-50 border border-red-200">
+          <AlertCircle size={18} className="text-red-500 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-red-700">Prediction failed</p>
+            <p className="text-xs text-red-600 mt-0.5">{error}</p>
+          </div>
+        </div>
+      )}
 
       {/* Form */}
       <PredictionForm
@@ -62,6 +96,8 @@ export default function CropYieldPrediction() {
         loading={loading}
         showCropType={true}
         taskLabel="Predict Yield"
+        task="crop_yield"
+        availability={availability}
       />
 
       {/* Loading */}

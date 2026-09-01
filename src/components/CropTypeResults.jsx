@@ -5,7 +5,7 @@ import {
   PolarAngleAxis, PolarRadiusAxis,
 } from 'recharts';
 import {
-  Award, Target, Percent, TrendingUp,
+  Award, Target, TrendingUp,
   CheckCircle2, Sparkles,
 } from 'lucide-react';
 
@@ -41,14 +41,20 @@ export default function CropTypeResults({ result }) {
 
   const { predictedCrop, confidence, topPredictions, featureImportance, modelMetrics } = result;
 
+  const m = modelMetrics || {};
+  const accuracy = m.accuracy;
+  const f1 = m.f1 != null ? m.f1 : m.f1Score;
+  const precision = m.precision;
+  const recall = m.recall;
+
   // Radar chart data for metrics
   const radarData = [
-    { metric: 'Accuracy', value: modelMetrics.accuracy },
-    { metric: 'Precision', value: modelMetrics.precision },
-    { metric: 'F1-Score', value: modelMetrics.f1Score },
-    { metric: 'Recall', value: modelMetrics.recall },
+    { metric: 'Accuracy', value: accuracy },
+    { metric: 'Precision', value: precision },
+    { metric: 'F1-Score', value: f1 },
+    { metric: 'Recall', value: recall },
     { metric: 'Confidence', value: confidence },
-  ];
+  ].filter(d => d.value != null);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -92,10 +98,10 @@ export default function CropTypeResults({ result }) {
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <MetricBadge label="Accuracy" value={modelMetrics.accuracy} icon={Target} color="forest" />
-        <MetricBadge label="F1-Score" value={modelMetrics.f1Score} icon={Award} color="blue" />
-        <MetricBadge label="Precision" value={modelMetrics.precision} icon={CheckCircle2} color="harvest" />
-        <MetricBadge label="Recall" value={modelMetrics.recall} icon={TrendingUp} color="earth" />
+        <MetricBadge label="Accuracy" value={accuracy} icon={Target} color="forest" />
+        <MetricBadge label="F1-Score" value={f1} icon={Award} color="blue" />
+        <MetricBadge label="Precision" value={precision} icon={CheckCircle2} color="harvest" />
+        <MetricBadge label="Recall" value={recall} icon={TrendingUp} color="earth" />
       </div>
 
       {/* Charts Row */}

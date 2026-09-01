@@ -1,24 +1,36 @@
-import React, { useState, useCallback } from 'react';
-import { Sprout, Zap } from 'lucide-react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { Sprout, Zap, AlertCircle } from 'lucide-react';
 import PredictionForm, { DEFAULT_INPUTS } from './PredictionForm';
 import CropTypeResults from './CropTypeResults';
-import { predictCropType } from '../services/mockInference';
+import { predictCropType, fetchHealth, humanizeApiError } from '../services/apiService';
 
 export default function CropTypePrediction() {
   const [inputs, setInputs] = useState({ ...DEFAULT_INPUTS });
-  const [modelVariant, setModelVariant] = useState('advanced');
+  const [modelVariant, setModelVariant] = useState('feature_engineering');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [availability, setAvailability] = useState(null);
 
-  const handlePredict = useCallback(() => {
+  useEffect(() => {
+    fetchHealth()
+      .then(h => setAvailability(h.models_loaded?.crop_type || null))
+      .catch(() => setAvailability(null));
+  }, []);
+
+  const handlePredict = useCallback(async () => {
     setLoading(true);
     setResult(null);
-    // Simulate processing delay for realism
-    setTimeout(() => {
-      const prediction = predictCropType(inputs, modelVariant);
+    setError(null);
+    try {
+      const prediction = await predictCropType(inputs, modelVariant);
       setResult(prediction);
+    } catch (e) {
+      setError(humanizeApiError(e));
+      setResult(null);
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   }, [inputs, modelVariant]);
 
   return (
@@ -53,6 +65,17 @@ export default function CropTypePrediction() {
         </div>
       </div>
 
+      {/* Error banner */}
+      {error && (
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-red-50 border border-red-200">
+          <AlertCircle size={18} className="text-red-500 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-red-700">Prediction failed</p>
+            <p className="text-xs text-red-600 mt-0.5">{error}</p>
+          </div>
+        </div>
+      )}
+
       {/* Prediction Form */}
       <PredictionForm
         inputs={inputs}
@@ -62,9 +85,11 @@ export default function CropTypePrediction() {
         onPredict={handlePredict}
         loading={loading}
         taskLabel="Predict Crop Type"
+        task="crop_type"
+        availability={availability}
       />
 
-      {/* Results */}
+      {/* Loading */}
       {loading && (
         <div className="flex items-center justify-center py-16">
           <div className="text-center">
@@ -75,6 +100,7 @@ export default function CropTypePrediction() {
         </div>
       )}
 
+      {/* Results */}
       {result && !loading && <CropTypeResults result={result} />}
     </div>
   );

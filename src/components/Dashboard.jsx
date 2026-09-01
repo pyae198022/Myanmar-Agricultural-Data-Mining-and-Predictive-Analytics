@@ -1,17 +1,20 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Sprout, BarChart3, GitCompare, TrendingUp,
   Thermometer, CloudRain, Droplets, MapPin,
-  ArrowRight, Leaf, Sun, Wheat,
+  ArrowRight, Leaf, Sun, Wheat, AlertCircle,
 } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
-import { getHistoricalTrends } from '../services/mockInference';
+import {
+  getHistoricalTrends, getModelComparison, humanizeApiError,
+  REGIONS, SOIL_TYPES, WATER_SOURCES, CROP_TYPES,
+} from '../services/apiService';
 
 const quickStats = [
-  { label: 'Crop Types', value: '12', icon: Sprout, color: 'text-forest-600', bg: 'bg-forest-50' },
-  { label: 'Regions', value: '15', icon: MapPin, color: 'text-blue-600', bg: 'bg-blue-50' },
-  { label: 'Soil Types', value: '8', icon: Leaf, color: 'text-soil-600', bg: 'bg-soil-50' },
-  { label: 'Water Sources', value: '7', icon: Droplets, color: 'text-cyan-600', bg: 'bg-cyan-50' },
+  { label: 'Crop Types', getValue: () => CROP_TYPES.length, icon: Sprout, color: 'text-forest-600', bg: 'bg-forest-50' },
+  { label: 'Regions', getValue: () => REGIONS.length, icon: MapPin, color: 'text-blue-600', bg: 'bg-blue-50' },
+  { label: 'Soil Types', getValue: () => SOIL_TYPES.length, icon: Leaf, color: 'text-soil-600', bg: 'bg-soil-50' },
+  { label: 'Water Sources', getValue: () => WATER_SOURCES.length, icon: Droplets, color: 'text-cyan-600', bg: 'bg-cyan-50' },
 ];
 
 const features = [
@@ -42,7 +45,55 @@ const features = [
 ];
 
 export default function Dashboard({ onNavigate }) {
-  const trendData = getHistoricalTrends('Mandalay', 'Rice');
+  const [trendData, setTrendData] = useState([]);
+  const [trendState, setTrendState] = useState('loading'); // loading | loaded | error
+  const [trendError, setTrendError] = useState(null);
+  const [modelMetrics, setModelMetrics] = useState(null);
+  const [metricsState, setMetricsState] = useState('loading');
+
+  useEffect(() => {
+    let active = true;
+
+    // Historical trend (real backend data; shown as unavailable if not found).
+    getHistoricalTrends('Mandalay', 'Paddy')
+      .then(res => {
+        if (!active) return;
+        const years = res && Array.isArray(res.years) ? res.years : [];
+        const mapped = years.map((year, i) => ({
+          year,
+          yield: res.yields ? res.yields[i] : null,
+          rainfall: res.rainfall ? res.rainfall[i] : null,
+          temperature: res.temperatures ? res.temperatures[i] : null,
+          area: res.areas ? res.areas[i] : null,
+        })).filter(d => d.yield != null);
+        setTrendData(mapped);
+        setTrendState(mapped.length > 0 ? 'loaded' : 'error');
+        if (mapped.length === 0) setTrendError('No historical data available for this region/crop.');
+      })
+      .catch(e => {
+        if (!active) return;
+        setTrendState('error');
+        setTrendError(humanizeApiError(e));
+      });
+
+    // Real model metrics (from the compare endpoint for crop_type).
+    getModelComparison({
+      region: 'Mandalay', year: 2023, cropType: 'Paddy', sownAcre: 200,
+      soilType: SOIL_TYPES[0], avgTemperature: 28, totalRainfall: 1000,
+      avgHumidity: 80, waterSource: WATER_SOURCES[1], seedingSeason: 'Rainy',
+    }, 'crop_type')
+      .then(res => {
+        if (!active) return;
+        setModelMetrics(res);
+        setMetricsState('loaded');
+      })
+      .catch(() => {
+        if (!active) return;
+        setMetricsState('error');
+      });
+
+    return () => { active = false; };
+  }, []);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
@@ -84,7 +135,7 @@ export default function Dashboard({ onNavigate }) {
                 <Icon size={22} className={stat.color} />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                <p className="text-2xl font-bold text-gray-900">{stat.getValue()}</p>
                 <p className="text-xs text-gray-500 font-medium">{stat.label}</p>
               </div>
             </div>
@@ -125,96 +176,83 @@ export default function Dashboard({ onNavigate }) {
         </div>
       </div>
 
-      {/* Trend Chart + Info */}
+      {/* Trend Chart + Model Info */}
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Chart */}
         <div className="lg:col-span-2 glass-card p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="font-semibold text-gray-900">Historical Yield Trend</h3>
-              <p className="text-xs text-gray-500">Rice production — Mandalay Region (2015–2025)</p>
+              <p className="text-xs text-gray-500">Paddy — Mandalay Region</p>
             </div>
             <TrendingUp size={20} className="text-forest-500" />
           </div>
-          <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trendData}>
-                <defs>
-                  <linearGradient id="yieldGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#2d9f63" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#2d9f63" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis
-                  dataKey="year"
-                  tick={{ fontSize: 11, fill: '#9ca3af' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 11, fill: '#9ca3af' }}
-                  axisLine={false}
-                  tickLine={false}
-                  domain={['auto', 'auto']}
-                />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: '12px',
-                    border: '1px solid #e5e7eb',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                    fontSize: '12px',
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="yield"
-                  stroke="#2d9f63"
-                  strokeWidth={2.5}
-                  fill="url(#yieldGrad)"
-                  dot={{ r: 3, fill: '#2d9f63' }}
-                  activeDot={{ r: 5, fill: '#2d9f63', stroke: '#fff', strokeWidth: 2 }}
-                  name="Yield (tons)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+          {trendState === 'loaded' && trendData.length > 0 ? (
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={trendData}>
+                  <defs>
+                    <linearGradient id="yieldGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#2d9f63" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#2d9f63" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="year" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} domain={['auto', 'auto']} />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: '12px', border: '1px solid #e5e7eb',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: '12px',
+                    }}
+                  />
+                  <Area type="monotone" dataKey="yield" stroke="#2d9f63" strokeWidth={2.5}
+                    fill="url(#yieldGrad)" dot={{ r: 3, fill: '#2d9f63' }}
+                    activeDot={{ r: 5, fill: '#2d9f63', stroke: '#fff', strokeWidth: 2 }} name="Yield (tons)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-56 flex flex-col items-center justify-center text-center">
+              {trendState === 'loading' ? (
+                <>
+                  <div className="w-8 h-8 border-3 border-forest-200 border-t-forest-600 rounded-full animate-spin mb-3" />
+                  <p className="text-sm text-gray-500">Loading historical data...</p>
+                </>
+              ) : (
+                <>
+                  <AlertCircle size={26} className="text-amber-400 mb-2" />
+                  <p className="text-sm font-medium text-gray-600">Historical data unavailable</p>
+                  <p className="text-xs text-gray-400 mt-1 max-w-xs">{trendError}</p>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Model Info */}
         <div className="glass-card p-6 flex flex-col gap-4">
           <h3 className="font-semibold text-gray-900">Model Variants</h3>
           <div className="space-y-3 flex-1">
-            {[
-              {
-                name: 'Baseline',
-                desc: 'Original unscaled features',
-                accuracy: '~75%',
-                color: 'bg-red-500',
-              },
-              {
-                name: 'Feature Eng.',
-                desc: 'Selected & scaled features',
-                accuracy: '~85%',
-                color: 'bg-blue-500',
-              },
-              {
-                name: 'Advanced',
-                desc: 'Apriori interaction features',
-                accuracy: '~91%',
-                color: 'bg-green-500',
-              },
-            ].map((model, i) => (
-              <div key={i} className="p-3 rounded-xl bg-gray-50 border border-gray-100">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className={`w-2.5 h-2.5 rounded-full ${model.color}`} />
-                  <span className="text-sm font-semibold text-gray-800">{model.name}</span>
-                  <span className="ml-auto text-xs font-mono font-bold text-forest-600">
-                    {model.accuracy}
-                  </span>
+            {metricsState === 'loaded' && modelMetrics ? (
+              modelMetrics.models.map(m => (
+                <div key={m.variant} className="p-3 rounded-xl bg-gray-50 border border-gray-100">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-2.5 h-2.5 rounded-full bg-forest-500" />
+                    <span className="text-sm font-semibold text-gray-800">{m.name}</span>
+                    <span className="ml-auto text-xs font-mono font-bold text-forest-600">
+                      {m.available && m.metrics ? `${(m.metrics.accuracy * 100).toFixed(1)}%` : 'Unavailable'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 ml-[18px]">
+                    {m.available ? 'Accuracy from backend' : m.error || 'Not available'}
+                  </p>
                 </div>
-                <p className="text-xs text-gray-500 ml-[18px]">{model.desc}</p>
-              </div>
-            ))}
+              ))
+            ) : metricsState === 'error' ? (
+              <p className="text-xs text-gray-500">Model metrics could not be loaded from backend.</p>
+            ) : (
+              <p className="text-xs text-gray-500">Loading model metrics...</p>
+            )}
           </div>
 
           <div className="p-3 rounded-xl bg-harvest-50 border border-harvest-100">
@@ -223,18 +261,10 @@ export default function Dashboard({ onNavigate }) {
               <span className="text-xs font-medium text-harvest-700">Optimal Conditions</span>
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-harvest-600">
-              <div className="flex items-center gap-1">
-                <Thermometer size={12} /> 20-32°C
-              </div>
-              <div className="flex items-center gap-1">
-                <CloudRain size={12} /> 50-250mm
-              </div>
-              <div className="flex items-center gap-1">
-                <Droplets size={12} /> 40-80%
-              </div>
-              <div className="flex items-center gap-1">
-                <MapPin size={12} /> 15 Regions
-              </div>
+              <div className="flex items-center gap-1"><Thermometer size={12} /> 20-32°C</div>
+              <div className="flex items-center gap-1"><CloudRain size={12} /> 50-250mm</div>
+              <div className="flex items-center gap-1"><Droplets size={12} /> 40-80%</div>
+              <div className="flex items-center gap-1"><MapPin size={12} /> {REGIONS.length} Regions</div>
             </div>
           </div>
         </div>

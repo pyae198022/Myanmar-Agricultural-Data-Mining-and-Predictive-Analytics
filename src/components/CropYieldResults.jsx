@@ -1,19 +1,15 @@
 import React from 'react';
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, AreaChart, Area,
+  BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import {
-  TrendingUp, TrendingDown, ArrowUpDown, BarChart3,
-  Target, Gauge, Award, CheckCircle2, Sparkles,
-  ArrowUp, ArrowDown, Minus,
+  ArrowUpDown, BarChart3,
+  Target, Gauge, Sparkles,
 } from 'lucide-react';
-import { getHistoricalTrends } from '../services/mockInference';
 
 const LEVEL_CONFIG = {
-  Low: { color: 'red', icon: TrendingDown, emoji: '📉', bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700' },
-  Medium: { color: 'harvest', icon: Minus, emoji: '📊', bg: 'bg-harvest-50', border: 'border-harvest-200', text: 'text-harvest-700' },
-  High: { color: 'forest', icon: TrendingUp, emoji: '📈', bg: 'bg-forest-50', border: 'border-forest-200', text: 'text-forest-700' },
+  Low: { color: 'red', emoji: '📉', bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700' },
+  High: { color: 'forest', emoji: '📈', bg: 'bg-forest-50', border: 'border-forest-200', text: 'text-forest-700' },
 };
 
 const REG_COLOR_MAP = {
@@ -25,6 +21,7 @@ const REG_COLOR_MAP = {
 };
 
 function RegressionMetricCard({ label, value, unit, icon: Icon, color, lowerIsBetter = false }) {
+  if (value == null) return null;
   const c = REG_COLOR_MAP[color] || REG_COLOR_MAP.forest;
   return (
     <div className={`metric-card ${c.bg} ${c.border}`}>
@@ -48,20 +45,25 @@ export default function CropYieldResults({ result, inputs }) {
   if (!result) return null;
 
   const {
-    predictedYield, yieldLevel, confidenceInterval,
-    featureImportance, modelMetrics,
+    predictedYield, featureImportance, modelMetrics, yieldLevelInfo,
   } = result;
 
-  const levelConf = LEVEL_CONFIG[yieldLevel];
-  const LevelIcon = levelConf.icon;
+  const m = modelMetrics || {};
+  const r2 = m.r2 != null ? m.r2 : m.r2Score;
+  const rmse = m.rmse;
+  const mae = m.mae;
 
-  // Historical trend for context
-  const trendData = getHistoricalTrends(inputs.region, inputs.cropType);
+  // Binary yield level from the real yield-level endpoint (Low/High only).
+  const level = yieldLevelInfo && yieldLevelInfo.predictedLevel ? yieldLevelInfo.predictedLevel : null;
+  const levelConf = LEVEL_CONFIG[level];
+
+  // Real metric keys for charts (ignore nulls).
+  const barData = (featureImportance || []).filter(f => f.importance != null);
 
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Main Result Card */}
-      <div className={`glass-card p-6 ${levelConf.bg} ${levelConf.border} border`}>
+      <div className={`glass-card p-6 ${levelConf ? `${levelConf.bg} ${levelConf.border} border` : 'border border-gray-100'}`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
@@ -70,7 +72,7 @@ export default function CropYieldResults({ result, inputs }) {
             </div>
             <div className="flex items-baseline gap-3 mb-2">
               <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
-                {predictedYield.toFixed(2)}
+                {Number(predictedYield).toFixed(2)}
               </h2>
               <span className="text-lg font-medium text-gray-500">tons</span>
             </div>
@@ -80,32 +82,24 @@ export default function CropYieldResults({ result, inputs }) {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Yield Level Badge */}
-            <div className={`px-5 py-3 rounded-xl ${levelConf.bg} border ${levelConf.border} text-center`}>
-              <span className="text-2xl">{levelConf.emoji}</span>
-              <div className="flex items-center gap-1.5 mt-1">
-                <LevelIcon size={14} className={levelConf.text} />
-                <span className={`text-sm font-bold ${levelConf.text}`}>{yieldLevel} Yield</span>
+            {/* Yield Level Badge (binary Low/High from backend) */}
+            {levelConf ? (
+              <div className={`px-5 py-3 rounded-xl ${levelConf.bg} border ${levelConf.border} text-center`}>
+                <span className="text-2xl">{levelConf.emoji}</span>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className={`text-sm font-bold ${levelConf.text}`}>{level} Yield</span>
+                </div>
+                {yieldLevelInfo && (
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    P(High) {Number(yieldLevelInfo.probabilityHigh).toFixed(1)} · P(Low) {Number(yieldLevelInfo.probabilityLow).toFixed(1)}
+                  </p>
+                )}
               </div>
-            </div>
-
-            {/* Confidence Interval */}
-            <div className="text-center p-3 rounded-xl bg-white/60 border border-gray-100">
-              <p className="text-xs text-gray-500 mb-1">95% CI</p>
-              <div className="flex items-center gap-1.5">
-                <ArrowDown size={12} className="text-blue-400" />
-                <span className="text-sm font-mono font-bold text-gray-700">
-                  {confidenceInterval.lower}
-                </span>
+            ) : (
+              <div className="px-5 py-3 rounded-xl bg-gray-50 border border-gray-100 text-center">
+                <span className="text-xs text-gray-500">Yield level model not available</span>
               </div>
-              <div className="w-6 h-px bg-gray-300 mx-auto my-1" />
-              <div className="flex items-center gap-1.5">
-                <ArrowUp size={12} className="text-green-500" />
-                <span className="text-sm font-mono font-bold text-gray-700">
-                  {confidenceInterval.upper}
-                </span>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -117,64 +111,19 @@ export default function CropYieldResults({ result, inputs }) {
           Regression Metrics
         </h4>
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-          <RegressionMetricCard
-            label="R² Score"
-            value={modelMetrics.r2Score.toFixed(3)}
-            unit=""
-            icon={Target}
-            color="forest"
-          />
-          <RegressionMetricCard
-            label="RMSE"
-            value={modelMetrics.rmse.toFixed(2)}
-            unit=""
-            icon={ArrowUpDown}
-            color="red"
-            lowerIsBetter
-          />
-          <RegressionMetricCard
-            label="MAE"
-            value={modelMetrics.mae.toFixed(2)}
-            unit=""
-            icon={Gauge}
-            color="harvest"
-            lowerIsBetter
-          />
+          <RegressionMetricCard label="R² Score" value={r2 == null ? null : r2.toFixed(3)} unit="" icon={Target} color="forest" />
+          <RegressionMetricCard label="RMSE" value={rmse == null ? null : rmse.toFixed(2)} unit="" icon={ArrowUpDown} color="red" lowerIsBetter />
+          <RegressionMetricCard label="MAE" value={mae == null ? null : mae.toFixed(2)} unit="" icon={Gauge} color="harvest" lowerIsBetter />
         </div>
       </div>
 
-      {/* Classification Metrics */}
-      <div>
-        <h4 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
-          <CheckCircle2 size={16} className="text-blue-500" />
-          Yield Level Classification
-        </h4>
-        <div className="grid grid-cols-2 gap-3">
-          <RegressionMetricCard
-            label="Classification Accuracy"
-            value={(modelMetrics.classificationAccuracy * 100).toFixed(1)}
-            unit="%"
-            icon={Award}
-            color="blue"
-          />
-          <RegressionMetricCard
-            label="Classification F1"
-            value={(modelMetrics.classificationF1 * 100).toFixed(1)}
-            unit="%"
-            icon={Award}
-            color="indigo"
-          />
-        </div>
-      </div>
-
-      {/* Charts Row */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Feature Importance */}
-        <div className="glass-card p-5">
-          <h4 className="text-sm font-semibold text-gray-800 mb-4">Feature Importance</h4>
+      {/* Feature Importance */}
+      <div className="glass-card p-5">
+        <h4 className="text-sm font-semibold text-gray-800 mb-4">Feature Importance</h4>
+        {barData.length > 0 ? (
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={featureImportance} layout="vertical">
+              <BarChart data={barData} layout="vertical">
                 <XAxis
                   type="number"
                   domain={[0, 'auto']}
@@ -200,79 +149,19 @@ export default function CropYieldResults({ result, inputs }) {
                   }}
                 />
                 <Bar dataKey="importance" radius={[0, 6, 6, 0]} fill="#2d9f63">
-                  {featureImportance.map((_, i) => (
-                    <Cell
-                      key={i}
-                      fill={[
-                        '#2d9f63', '#e5a03c', '#2563eb', '#dc2626',
-                        '#8b5cf6', '#06b6d4', '#ec4899', '#f59e0b', '#10b981',
-                      ][i % 9]}
-                    />
+                  {barData.map((_, i) => (
+                    <Cell key={i} fill={CELL_COLORS[i % CELL_COLORS.length]} />
                   ))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
-
-        {/* Historical Yield Trend */}
-        <div className="glass-card p-5">
-          <h4 className="text-sm font-semibold text-gray-800 mb-1">Historical Yield Trend</h4>
-          <p className="text-xs text-gray-500 mb-4">
-            {inputs.cropType} in {inputs.region} (2015–2025)
-          </p>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trendData}>
-                <defs>
-                  <linearGradient id="yieldAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#2d9f63" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#2d9f63" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="rainAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis
-                  dataKey="year"
-                  tick={{ fontSize: 10, fill: '#9ca3af' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 10, fill: '#9ca3af' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: '12px',
-                    border: '1px solid #e5e7eb',
-                    fontSize: '12px',
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="yield"
-                  stroke="#2d9f63"
-                  strokeWidth={2}
-                  fill="url(#yieldAreaGrad)"
-                  name="Yield (tons)"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="rainfall"
-                  stroke="#2563eb"
-                  strokeWidth={1.5}
-                  fill="url(#rainAreaGrad)"
-                  name="Rainfall (mm)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        ) : (
+          <p className="text-sm text-gray-500">Feature importance is not available for this model.</p>
+        )}
       </div>
     </div>
   );
 }
+
+const CELL_COLORS = ['#2d9f63', '#e5a03c', '#2563eb', '#dc2626', '#8b5cf6', '#06b6d4', '#ec4899', '#f59e0b', '#10b981'];

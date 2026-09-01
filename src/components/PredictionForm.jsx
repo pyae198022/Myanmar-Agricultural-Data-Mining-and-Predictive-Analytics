@@ -1,9 +1,12 @@
 import React from 'react';
 import {
   MapPin, Layers, Droplets, Thermometer, CloudRain,
-  Wind, Calendar, Maximize2, RotateCcw,
+  Wind, Calendar, Maximize2, RotateCcw, AlertTriangle,
 } from 'lucide-react';
-import { REGIONS, SOIL_TYPES, WATER_SOURCES, CROP_TYPES, MODEL_VARIANTS } from '../services/mockInference';
+import {
+  REGIONS, SOIL_TYPES, WATER_SOURCES, CROP_TYPES,
+  SEEDING_SEASONS, MODEL_VARIANTS,
+} from '../services/apiService';
 
 const ICON_COLORS = {
   forest: 'text-green-600',
@@ -55,16 +58,43 @@ const SliderField = ({ label, icon: Icon, value, onChange, min, max, step, unit,
   </div>
 );
 
+const NumberField = ({ label, icon: Icon, value, onChange, min, max, step, unit, color = 'forest' }) => (
+  <div className="space-y-1.5">
+    <label className="flex items-center justify-between text-sm font-medium text-gray-700">
+      <span className="flex items-center gap-1.5">
+        <Icon size={14} className={ICON_COLORS[color] || ICON_COLORS.forest} />
+        {label}
+      </span>
+      <span className="font-mono text-forest-600 bg-forest-50 px-2 py-0.5 rounded-md text-xs">
+        {value}{unit}
+      </span>
+    </label>
+    <input
+      type="number"
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      onChange={e => onChange(Number(e.target.value))}
+      className="input-field"
+    />
+    <div className="flex justify-between text-xs text-gray-400">
+      <span>Range: {min}{unit} – {max}{unit}</span>
+    </div>
+  </div>
+);
+
 const DEFAULT_INPUTS = {
   region: 'Mandalay',
-  soilType: 'Alluvial',
-  waterSource: 'Canal',
+  soilType: 'Acrisols / Ferralsols / Red Earth',
+  waterSource: 'Rainfed',
+  seedingSeason: 'Rainy',
   avgTemperature: 28,
-  totalRainfall: 150,
-  avgHumidity: 65,
-  year: 2025,
+  totalRainfall: 1000,
+  avgHumidity: 80,
+  year: 2023,
   sownAcre: 200,
-  cropType: 'Rice',
+  cropType: 'Paddy',
 };
 
 export default function PredictionForm({
@@ -75,13 +105,20 @@ export default function PredictionForm({
   onPredict,
   loading,
   showCropType = false,
+  hideVariants = false,
   taskLabel = 'Predict',
+  task = 'crop_type',
+  availability = null, // { baseline, feature_engineering, advanced } booleans
 }) {
   const handleReset = () => setInputs({ ...DEFAULT_INPUTS });
 
   const updateField = (field, value) => {
     setInputs(prev => ({ ...prev, [field]: value }));
   };
+
+  const variantOptions = MODEL_VARIANTS[task] || MODEL_VARIANTS.crop_type;
+  const chosenVariantUnavailable =
+    availability && modelVariant in availability && availability[modelVariant] === false;
 
   return (
     <div className="glass-card p-6 space-y-6">
@@ -98,31 +135,53 @@ export default function PredictionForm({
       </div>
 
       {/* Model Variant Selector */}
-      <div className="space-y-2">
+      {!hideVariants && (
+        <div className="space-y-2">
         <p className="text-sm font-medium text-gray-700">Model Variant</p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          {MODEL_VARIANTS.map(variant => (
-            <button
-              key={variant.id}
-              onClick={() => setModelVariant(variant.id)}
-              className={`p-3 rounded-xl border-2 text-left transition-all duration-200 ${
-                modelVariant === variant.id
-                  ? 'border-forest-500 bg-forest-50 shadow-sm'
-                  : 'border-gray-100 bg-white hover:border-gray-200'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: variant.color }}
-                />
-                <span className="text-sm font-semibold text-gray-800">{variant.name}</span>
-              </div>
-              <p className="text-xs text-gray-500 mt-1 ml-5">{variant.description}</p>
-            </button>
-          ))}
+          {variantOptions.map(variant => {
+            const available = availability ? availability[variant.id] !== false : !variant.guarded;
+            const selected = modelVariant === variant.id;
+            const disabled = available === false;
+            return (
+              <button
+                key={variant.id}
+                type="button"
+                disabled={disabled}
+                onClick={() => setModelVariant(variant.id)}
+                className={`p-3 rounded-xl border-2 text-left transition-all duration-200 ${
+                  selected
+                    ? 'border-forest-500 bg-forest-50 shadow-sm'
+                    : disabled
+                      ? 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
+                      : 'border-gray-100 bg-white hover:border-gray-200'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: variant.color }}
+                  />
+                  <span className="text-sm font-semibold text-gray-800">{variant.name}</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1 ml-5">{variant.description}</p>
+                {disabled && (
+                  <p className="flex items-center gap-1 text-[11px] font-medium text-amber-600 mt-1 ml-5">
+                    <AlertTriangle size={11} /> Unavailable
+                  </p>
+                )}
+              </button>
+            );
+          })}
         </div>
+        {chosenVariantUnavailable && (
+          <p className="flex items-center gap-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+            <AlertTriangle size={13} />
+            This model variant is not available. Prediction cannot be run for it.
+          </p>
+        )}
       </div>
+      )}
 
       {/* Categorical Inputs */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -148,6 +207,14 @@ export default function PredictionForm({
           options={WATER_SOURCES}
           color="blue"
         />
+        <SelectField
+          label="Seeding Season"
+          icon={Calendar}
+          value={inputs.seedingSeason}
+          onChange={v => updateField('seedingSeason', v)}
+          options={SEEDING_SEASONS}
+          color="cyan"
+        />
         {showCropType && (
           <SelectField
             label="Crop Type"
@@ -167,15 +234,15 @@ export default function PredictionForm({
           icon={Thermometer}
           value={inputs.avgTemperature}
           onChange={v => updateField('avgTemperature', v)}
-          min={10} max={45} step={0.5} unit="°C"
+          min={21.06} max={29.19} step={0.5} unit="°C"
           color="red"
         />
-        <SliderField
+        <NumberField
           label="Total Rainfall"
           icon={CloudRain}
           value={inputs.totalRainfall}
           onChange={v => updateField('totalRainfall', v)}
-          min={0} max={400} step={5} unit="mm"
+          min={270.44} max={10036.74} step={0.01} unit="mm"
           color="blue"
         />
         <SliderField
@@ -183,15 +250,15 @@ export default function PredictionForm({
           icon={Wind}
           value={inputs.avgHumidity}
           onChange={v => updateField('avgHumidity', v)}
-          min={10} max={100} step={1} unit="%"
+          min={70.05} max={93} step={1} unit="%"
           color="cyan"
         />
-        <SliderField
+        <NumberField
           label="Sown Acre"
           icon={Maximize2}
           value={inputs.sownAcre}
           onChange={v => updateField('sownAcre', v)}
-          min={10} max={1000} step={10} unit=" acre"
+          min={0} max={5225220} step={1} unit=" acre"
         />
       </div>
 
@@ -202,14 +269,14 @@ export default function PredictionForm({
           icon={Calendar}
           value={inputs.year}
           onChange={v => updateField('year', v)}
-          min={2015} max={2030} step={1} unit=""
+          min={2012} max={2023} step={1} unit=""
         />
       </div>
 
       {/* Submit */}
       <button
         onClick={onPredict}
-        disabled={loading || !inputs.region || !inputs.soilType || !inputs.waterSource}
+        disabled={loading || !inputs.region || !inputs.soilType || !inputs.waterSource || !inputs.seedingSeason || chosenVariantUnavailable}
         className="btn-primary w-full sm:w-auto flex items-center justify-center gap-2"
       >
         {loading ? (
