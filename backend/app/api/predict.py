@@ -174,3 +174,24 @@ def get_historical_trends(
             ),
         )
     return trends
+
+
+@router.get("/historical/overview")
+def get_historical_overview(
+    region: str = "Mandalay",
+):
+    """
+    Return REAL per-crop historical yield series for a region from the bundled
+    cleaned dataset (aggregated by year), including the available year range.
+    Only real values are returned; no fabricated data. Returns 404 when the
+    region has no matching real rows.
+    """
+    from app.preprocessing.reference import historical_overview
+
+    overview = historical_overview(region=region)
+    if overview is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No real historical data found for region='{region}'.",
+        )
+    return overview

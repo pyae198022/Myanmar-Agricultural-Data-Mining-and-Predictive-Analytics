@@ -27,7 +27,7 @@ export default function Sidebar({ activePage, onNavigate }) {
             <Leaf size={22} className="text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-bold tracking-tight">AgriPredict</h1>
+            <h1 className="text-lg font-bold tracking-tight">Lal Yar Link</h1>
             <p className="text-xs text-forest-200 font-medium">Decision Support System</p>
           </div>
         </div>

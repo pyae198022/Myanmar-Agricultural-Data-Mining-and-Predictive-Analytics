@@ -4,6 +4,7 @@ import Dashboard from './components/Dashboard';
 import CropTypePrediction from './components/CropTypePrediction';
 import CropYieldPrediction from './components/CropYieldPrediction';
 import ModelComparison from './components/ModelComparison';
+import HistoricalTrends from './components/HistoricalTrends';
 import { Menu, X } from 'lucide-react';
 
 const PAGES = {
@@ -11,6 +12,7 @@ const PAGES = {
   cropType: 'cropType',
   cropYield: 'cropYield',
   comparison: 'comparison',
+  historicalTrends: 'historicalTrends',
 };
 
 function App() {
@@ -27,6 +29,8 @@ function App() {
         return <CropYieldPrediction />;
       case PAGES.comparison:
         return <ModelComparison />;
+      case PAGES.historicalTrends:
+        return <HistoricalTrends onNavigate={setActivePage} />;
       default:
         return <Dashboard onNavigate={setActivePage} />;
     }
@@ -67,7 +71,7 @@ function App() {
           >
             {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
-          <h1 className="text-lg font-bold text-forest-700">AgriPredict</h1>
+          <h1 className="text-lg font-bold text-forest-700">Lal Yar Link</h1>
           <div className="w-10" /> {/* Spacer */}
         </header>
 

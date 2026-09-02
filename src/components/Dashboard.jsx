@@ -102,7 +102,7 @@ export default function Dashboard({ onNavigate }) {
         <div>
           <div className="flex items-center gap-2 mb-2">
             <Sun size={20} className="text-harvest-500" />
-            <span className="text-sm font-medium text-harvest-600">Welcome to AgriPredict</span>
+            <span className="text-sm font-medium text-harvest-600">Welcome to Lal Yar Link</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
             Agricultural Decision Support
@@ -207,7 +207,7 @@ export default function Dashboard({ onNavigate }) {
                   />
                   <Area type="monotone" dataKey="yield" stroke="#2d9f63" strokeWidth={2.5}
                     fill="url(#yieldGrad)" dot={{ r: 3, fill: '#2d9f63' }}
-                    activeDot={{ r: 5, fill: '#2d9f63', stroke: '#fff', strokeWidth: 2 }} name="Yield (tons)" />
+                    activeDot={{ r: 5, fill: '#2d9f63', stroke: '#fff', strokeWidth: 2 }} name="Yield (tons/acre)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -267,6 +267,50 @@ export default function Dashboard({ onNavigate }) {
               <div className="flex items-center gap-1"><MapPin size={12} /> {REGIONS.length} Regions</div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Others */}
+      <div>
+        <h2 className="text-lg font-semibold text-gray-800 mb-4">Others</h2>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <button
+            onClick={() => onNavigate('historicalTrends')}
+            className="glass-card p-6 text-left group hover:shadow-xl transition-all duration-300"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <TrendingUp size={24} className="text-white" />
+              </div>
+              {trendData.length > 1 ? (
+                <div className="w-24 h-10">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={trendData}>
+                      <defs>
+                        <linearGradient id="othersGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <Area type="monotone" dataKey="yield" stroke="#0ea5e9" strokeWidth={2}
+                        fill="url(#othersGrad)" dot={false} isAnimationActive={false} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="w-12 h-12 rounded-xl bg-cyan-50 flex items-center justify-center">
+                  <TrendingUp size={22} className="text-cyan-500" />
+                </div>
+              )}
+            </div>
+            <h3 className="font-semibold text-gray-900 mb-1">Historical Yield Trend</h3>
+            <p className="text-xs text-gray-500 mb-3">Paddy — Mandalay Region</p>
+            <p className="text-sm text-gray-500 leading-relaxed mb-4">View historical crop yield trends</p>
+            <div className="flex items-center text-sm font-medium text-cyan-600 group-hover:text-cyan-700">
+              View Trends
+              <ArrowRight size={14} className="ml-1.5 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </button>
         </div>
       </div>
     </div>

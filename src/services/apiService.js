@@ -228,3 +228,13 @@ export function getHistoricalTrends(region, cropType) {
   const key = `/historical?${params.toString()}`;
   return cachedGet(key, () => request(`/historical?${params.toString()}`));
 }
+
+// ─── Historical Overview ─────────────────────────────────────────────────────
+// Returns real per-crop historical yield series for a region plus the available
+// year range. Surfaces errors and never fabricates values.
+
+export function getHistoricalOverview(region) {
+  const params = new URLSearchParams({ region });
+  const key = `/historical/overview?${params.toString()}`;
+  return cachedGet(key, () => request(`/historical/overview?${params.toString()}`));
+}

@@ -163,6 +163,43 @@ def build_association_features(feature_row: dict, task_id: str) -> dict:
     }
 
 
+@lru_cache(maxsize=32)
+def historical_overview(region: str):
+    """
+    Return REAL per-crop historical yield series for a region, aggregated by
+    year, from the bundled cleaned dataset. Only real values are returned.
+
+    Returns ``None`` when the region has no matching real rows, otherwise a dict::
+
+        {
+          "region": "Mandalay",
+          "year_min": 2012,
+          "year_max": 2023,
+          "crops": { "Paddy": {"years": [...], "yields": [...]}, ... }
+        }
+    """
+    df = load_clean_data()
+    region_name = str(region).strip()
+    sub = df[df["Region"].astype(str).str.strip() == region_name]
+    if sub.empty:
+        return None
+
+    crops: dict[str, dict] = {}
+    for crop, grp in sub.groupby("Crop_Type"):
+        agg = grp.groupby("Year")["Crop_Yield"].mean().sort_index()
+        crops[str(crop)] = {
+            "years": [int(y) for y in agg.index.tolist()],
+            "yields": [round(float(v), 4) for v in agg.tolist()],
+        }
+
+    return {
+        "region": region_name,
+        "year_min": int(sub["Year"].min()),
+        "year_max": int(sub["Year"].max()),
+        "crops": crops,
+    }
+
+
 @lru_cache(maxsize=1)
 def _yield_level_history() -> dict[tuple, dict[int, str]]:
     """
