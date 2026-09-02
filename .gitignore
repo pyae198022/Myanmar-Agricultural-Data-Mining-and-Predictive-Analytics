@@ -12,6 +12,15 @@ dist
 dist-ssr
 *.local
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ML models
+backend/models/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
