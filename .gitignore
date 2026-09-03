@@ -18,6 +18,12 @@ __pycache__/
 *.pyo
 *.pyd
 
+# Virtual environments
+.venv/
+venv/
+backend/.venv/
+backend/venv/
+
 # ML models
 backend/models/
 

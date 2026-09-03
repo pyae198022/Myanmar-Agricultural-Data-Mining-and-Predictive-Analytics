@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import PredictionForm, { DEFAULT_INPUTS } from './PredictionForm';
 import { getModelComparison, humanizeApiError } from '../services/apiService';
+import RocEvaluationSection from './RocEvaluationSection';
 
 const VARIANT_STYLE = {
   baseline: { color: '#dc2626', name: 'Baseline' },
@@ -402,6 +403,9 @@ export default function ModelComparison() {
 
       {/* Comparison Results */}
       {comparison && !loading && <ComparisonTable comparison={comparison} task={task} />}
+
+      {/* Chapter 4 ROC / AUC Evaluation (Crop Type only) */}
+      {task === 'crop_type' && !loading && <RocEvaluationSection />}
     </div>
   );
 }

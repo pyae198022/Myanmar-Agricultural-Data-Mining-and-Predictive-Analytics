@@ -3,10 +3,11 @@ import {
   Sprout, BarChart3, GitCompare, TrendingUp,
   Thermometer, CloudRain, Droplets, MapPin,
   ArrowRight, Leaf, Sun, Wheat, AlertCircle,
+  Database, GitBranch,
 } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 import {
-  getHistoricalTrends, getModelComparison, humanizeApiError,
+  getHistoricalTrends, getModelComparison, getDataStatistics, humanizeApiError,
   REGIONS, SOIL_TYPES, WATER_SOURCES, CROP_TYPES,
 } from '../services/apiService';
 
@@ -50,6 +51,8 @@ export default function Dashboard({ onNavigate }) {
   const [trendError, setTrendError] = useState(null);
   const [modelMetrics, setModelMetrics] = useState(null);
   const [metricsState, setMetricsState] = useState('loading');
+  const [datasetStats, setDatasetStats] = useState(null);
+  const [statsState, setStatsState] = useState('loading'); // loading | loaded | error
 
   useEffect(() => {
     let active = true;
@@ -92,8 +95,32 @@ export default function Dashboard({ onNavigate }) {
         setMetricsState('error');
       });
 
+    // Real dataset overview ranges (from the /stats backend source).
+    getDataStatistics()
+      .then(res => {
+        if (!active) return;
+        setDatasetStats(res);
+        setStatsState('loaded');
+      })
+      .catch(() => {
+        if (!active) return;
+        setStatsState('error');
+      });
+
     return () => { active = false; };
   }, []);
+
+  // Dataset overview ranges from the real /stats backend (min/max per column).
+  const rangeOf = (col) => {
+    const colStats = (datasetStats?.numerical || []).find(n => n.column === col);
+    if (!colStats || colStats.min == null || colStats.max == null) return null;
+    return { min: colStats.min, max: colStats.max };
+  };
+  const tempRange = rangeOf('Avg_Temperature');
+  const rainRange = rangeOf('Total_Rainfall');
+  const humRange = rangeOf('Avg_Humidity');
+  const regionCount = statsState === 'loaded' ? (datasetStats?.overview?.num_regions ?? REGIONS.length) : REGIONS.length;
+  const fmtRange = (r) => (r ? `${r.min}–${r.max}` : null);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
@@ -258,13 +285,13 @@ export default function Dashboard({ onNavigate }) {
           <div className="p-3 rounded-xl bg-harvest-50 border border-harvest-100">
             <div className="flex items-center gap-2">
               <Thermometer size={14} className="text-harvest-600" />
-              <span className="text-xs font-medium text-harvest-700">Optimal Conditions</span>
+              <span className="text-xs font-medium text-harvest-700">Dataset Overview</span>
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-harvest-600">
-              <div className="flex items-center gap-1"><Thermometer size={12} /> 20-32°C</div>
-              <div className="flex items-center gap-1"><CloudRain size={12} /> 50-250mm</div>
-              <div className="flex items-center gap-1"><Droplets size={12} /> 40-80%</div>
-              <div className="flex items-center gap-1"><MapPin size={12} /> {REGIONS.length} Regions</div>
+              <div className="flex items-center gap-1"><Thermometer size={12} /> <span className="text-harvest-800 font-medium">Temperature</span> {fmtRange(tempRange) || '—'}°C</div>
+              <div className="flex items-center gap-1"><CloudRain size={12} /> <span className="text-harvest-800 font-medium">Rainfall</span> {fmtRange(rainRange) || '—'}mm</div>
+              <div className="flex items-center gap-1"><Droplets size={12} /> <span className="text-harvest-800 font-medium">Humidity</span> {fmtRange(humRange) || '—'}%</div>
+              <div className="flex items-center gap-1"><MapPin size={12} /> <span className="text-harvest-800 font-medium">Regions</span> {regionCount}</div>
             </div>
           </div>
         </div>
@@ -308,6 +335,40 @@ export default function Dashboard({ onNavigate }) {
             <p className="text-sm text-gray-500 leading-relaxed mb-4">View historical crop yield trends</p>
             <div className="flex items-center text-sm font-medium text-cyan-600 group-hover:text-cyan-700">
               View Trends
+              <ArrowRight size={14} className="ml-1.5 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </button>
+
+          <button
+            onClick={() => onNavigate('dataStatistics')}
+            className="glass-card p-6 text-left group hover:shadow-xl transition-all duration-300"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Database size={24} className="text-white" />
+              </div>
+            </div>
+            <h3 className="font-semibold text-gray-900 mb-1">Data Statistics</h3>
+            <p className="text-sm text-gray-500 leading-relaxed mb-4">Dataset overview and statistics</p>
+            <div className="flex items-center text-sm font-medium text-indigo-600 group-hover:text-indigo-700">
+              View Statistics
+              <ArrowRight size={14} className="ml-1.5 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </button>
+
+          <button
+            onClick={() => onNavigate('descriptiveMining')}
+            className="glass-card p-6 text-left group hover:shadow-xl transition-all duration-300"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <GitBranch size={24} className="text-white" />
+              </div>
+            </div>
+            <h3 className="font-semibold text-gray-900 mb-1">Descriptive Mining</h3>
+            <p className="text-sm text-gray-500 leading-relaxed mb-4">Patterns and relationships in agricultural data</p>
+            <div className="flex items-center text-sm font-medium text-amber-600 group-hover:text-amber-700">
+              View Mining
               <ArrowRight size={14} className="ml-1.5 group-hover:translate-x-1 transition-transform" />
             </div>
           </button>

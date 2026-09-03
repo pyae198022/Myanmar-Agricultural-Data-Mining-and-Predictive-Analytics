@@ -5,6 +5,8 @@ import CropTypePrediction from './components/CropTypePrediction';
 import CropYieldPrediction from './components/CropYieldPrediction';
 import ModelComparison from './components/ModelComparison';
 import HistoricalTrends from './components/HistoricalTrends';
+import DataStatistics from './components/DataStatistics';
+import DescriptiveMining from './components/DescriptiveMining';
 import { Menu, X } from 'lucide-react';
 
 const PAGES = {
@@ -13,6 +15,8 @@ const PAGES = {
   cropYield: 'cropYield',
   comparison: 'comparison',
   historicalTrends: 'historicalTrends',
+  dataStatistics: 'dataStatistics',
+  descriptiveMining: 'descriptiveMining',
 };
 
 function App() {
@@ -31,6 +35,10 @@ function App() {
         return <ModelComparison />;
       case PAGES.historicalTrends:
         return <HistoricalTrends onNavigate={setActivePage} />;
+      case PAGES.dataStatistics:
+        return <DataStatistics />;
+      case PAGES.descriptiveMining:
+        return <DescriptiveMining />;
       default:
         return <Dashboard onNavigate={setActivePage} />;
     }

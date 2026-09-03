@@ -78,7 +78,7 @@ export default function Sidebar({ activePage, onNavigate }) {
       <div className="px-6 py-4 border-t border-white/10">
         <div className="flex items-center gap-2 text-xs text-forest-300">
           <Sun size={14} className="text-harvest-400" />
-          <span>Data Mining Project</span>
+          <span>Agricultural Data Analytics</span>
           <Droplets size={14} className="text-blue-300 ml-auto" />
         </div>
       </div>

@@ -195,3 +195,80 @@ def get_historical_overview(
             detail=f"No real historical data found for region='{region}'.",
         )
     return overview
+
+
+# ─── Data Statistics ─────────────────────────────────────────────────────────
+
+@router.get("/stats")
+def get_data_statistics():
+    """
+    Return descriptive statistics computed from the REAL bundled dataset
+    (``backend/data/cleaned_data.csv``): dataset overview, numerical statistics,
+    categorical distributions, and data-quality details. All values are derived
+    at request time via the existing data-loading utility; nothing is hardcoded.
+    """
+    from app.preprocessing.reference import data_statistics
+
+    return data_statistics()
+
+
+# ─── Descriptive Mining ──────────────────────────────────────────────────────
+
+@router.get("/descriptive-mining")
+def get_descriptive_mining():
+    """
+    Return the descriptive-mining report computed from the REAL bundled dataset.
+
+    Covers the four Project Book methods where real results can be produced from
+    ``backend/data/cleaned_data.csv``:
+      - Correlation Analysis (Pearson)
+      - Association Rule Mining (Apriori: Yield_Level + Crop_Type)
+      - Frequent Pattern Mining (Apriori itemsets: Crop Yield + Crop Type)
+      - Sequential Pattern Mining (order-2 / order-3 by Region-Crop_Type)
+
+    Every value is computed at request time from the dataset; none are hardcoded
+    or fabricated. No model artifacts are modified.
+    """
+    from app.preprocessing.descriptive import descriptive_mining_report
+
+    return descriptive_mining_report()
+
+
+# ─── Chapter 4 ROC / AUC Evaluation (Crop Type) ──────────────────────────────
+
+@router.get("/evaluation/roc")
+def get_roc_evaluation(variant: str = "baseline"):
+    """
+    Chapter 4 ROC-Curve & AUC evaluation for the Crop Type task.
+
+    Returns per-class AUC and test support read from the REAL Chapter 4 result
+    files, plus the real one-vs-rest ROC curve points recomputed from the
+    deployed Crop Type model artifacts on the held-out 2022-2023 (990-row) test
+    set. Macro / weighted ROC-AUC and accuracy are derived from the supplied
+    evaluation data.
+
+    Query params:
+      - variant: "baseline" (default) or "feature_engineering"
+    """
+    from app.preprocessing.roc_evaluation import (
+        available_variants,
+        roc_evaluation_report,
+        roc_evaluation_summary,
+    )
+
+    variants = available_variants()
+    if variant not in variants:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No Chapter 4 ROC/AUC result available for variant='{variant}'. "
+                   f"Available: {variants}",
+        )
+
+    report = roc_evaluation_report(variant)
+    summary = roc_evaluation_summary()
+    return {
+        "task": "Crop Type",
+        "selected_variant": variant,
+        "report": report,
+        "summary": summary,
+    }

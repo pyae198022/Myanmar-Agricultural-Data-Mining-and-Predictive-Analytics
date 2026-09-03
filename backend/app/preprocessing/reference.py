@@ -303,3 +303,108 @@ def historical_trends_for(region: str, crop_type: str):
         "areas": [round(float(v), 2) for v in agg["area"].tolist()],
     }
 
+
+# ─── Descriptive statistics (Data Statistics page) ──────────────────────────
+
+def _round_float(value, ndigits: int = 4):
+    """Round numeric stats safely, preserving None for missing values."""
+    try:
+        f = float(value)
+    except (TypeError, ValueError):
+        return None
+    if f != f:  # NaN
+        return None
+    return round(f, ndigits)
+
+
+def data_statistics() -> dict:
+    """
+    Compute descriptive statistics for the REAL bundled dataset
+    (``backend/data/cleaned_data.csv``).
+
+    Returns dataset overview, per-column numerical statistics (count, mean,
+    median, std, min, max), per-column categorical frequency distributions,
+    and data-quality information (missing values, duplicate rows, data types).
+
+    Nothing is hardcoded: every value is derived from the dataset at request
+    time by reusing ``load_clean_data()``.
+    """
+    df = load_clean_data()
+
+    numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
+    categorical_cols = [c for c in df.columns if not pd.api.types.is_numeric_dtype(df[c])]
+
+    # Dataset overview
+    years = df["Year"].dropna().astype(int)
+    overview = {
+        "total_records": int(len(df)),
+        "total_attributes": int(len(df.columns)),
+        "year_min": int(years.min()) if len(years) else None,
+        "year_max": int(years.max()) if len(years) else None,
+        "years": sorted(int(y) for y in years.unique()),
+        "year_counts": [
+            {"year": int(y), "count": int(c)}
+            for y, c in df["Year"].value_counts().sort_index().items()
+        ],
+        "num_regions": int(df["Region"].nunique()),
+        "num_crop_types": int(df["Crop_Type"].nunique()),
+        "num_soil_types": int(df["Soil_Type"].nunique()),
+        "num_seeding_seasons": int(df["Seeding_Season"].nunique()),
+        "num_water_sources": int(df["Water_Source"].nunique()),
+    }
+
+    # Numerical statistics
+    numerical = []
+    for col in numeric_cols:
+        s = df[col]
+        numerical.append(
+            {
+                "column": col,
+                "count": int(s.count()) if s.count() == s.count() else int(len(s)),
+                "mean": _round_float(s.mean()),
+                "median": _round_float(s.median()),
+                "std": _round_float(s.std()),
+                "min": _round_float(s.min()),
+                "max": _round_float(s.max()),
+            }
+        )
+
+    # Categorical statistics
+    categorical = []
+    for col in categorical_cols:
+        counts = df[col].value_counts(dropna=False).sort_values(ascending=False)
+        categorical.append(
+            {
+                "column": col,
+                "unique": int(df[col].nunique(dropna=True)),
+                "distributions": [
+                    {"label": (str(k) if str(k) != "nan" else "(missing)"), "count": int(v)}
+                    for k, v in counts.items()
+                ],
+            }
+        )
+
+    # Data quality
+    missing = [
+        {"column": col, "count": int(df[col].isna().sum())} for col in df.columns
+    ]
+    data_types = [
+        {
+            "column": col,
+            "dtype": str(df[col].dtype),
+            "is_numeric": bool(pd.api.types.is_numeric_dtype(df[col])),
+        }
+        for col in df.columns
+    ]
+
+    return {
+        "overview": overview,
+        "numerical": numerical,
+        "categorical": categorical,
+        "data_quality": {
+            "missing": missing,
+            "duplicate_rows": int(df.duplicated().sum()),
+            "data_types": data_types,
+        },
+    }
+

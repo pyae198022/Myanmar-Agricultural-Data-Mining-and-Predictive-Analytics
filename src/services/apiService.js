@@ -238,3 +238,32 @@ export function getHistoricalOverview(region) {
   const key = `/historical/overview?${params.toString()}`;
   return cachedGet(key, () => request(`/historical/overview?${params.toString()}`));
 }
+
+// ─── Data Statistics ─────────────────────────────────────────────────────────
+// Returns descriptive statistics computed from the real backend dataset. Stable
+// read-only data, so we reuse the dedup cache.
+
+export function getDataStatistics() {
+  const key = '/stats';
+  return cachedGet(key, () => request(key));
+}
+
+// ─── Descriptive Mining (Association Rules) ───────────────────────────────────
+// Surfaces the repository's existing association-rule mining outputs (real CSV
+// data) and the availability of other descriptive-mining components.
+
+export function getDescriptiveMining() {
+  const key = '/descriptive-mining';
+  return cachedGet(key, () => request(key));
+}
+
+// ─── Chapter 4 ROC / AUC Evaluation (Crop Type) ──────────────────────────────
+// Returns REAL per-class AUC + test support read from the Chapter 4 result files
+// and the real one-vs-rest ROC curve points recomputed from the deployed model
+// artifacts. `variant` is 'baseline' or 'feature_engineering'.
+
+export function getRocEvaluation(variant = 'baseline') {
+  const params = new URLSearchParams({ variant });
+  const key = `/evaluation/roc?${params.toString()}`;
+  return cachedGet(key, () => request(`/evaluation/roc?${params.toString()}`));
+}
