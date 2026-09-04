@@ -80,10 +80,6 @@ function CatalogModal({ catalog, onClose }) {
   const [query, setQuery] = useState('');
 
   useEffect(() => {
-    setQuery('');
-  }, [catalog]);
-
-  useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') onClose();
     };
@@ -147,7 +143,7 @@ function CatalogModal({ catalog, onClose }) {
         )}
 
         <ul className={`overflow-y-auto p-4 ${compact ? 'grid grid-cols-1 gap-2' : 'grid sm:grid-cols-2 gap-2'}`}>
-          {items.map((item, i) => (
+          {items.map((item) => (
             <li
               key={item}
               className="flex items-start gap-3 px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100 text-sm text-gray-800"
@@ -176,8 +172,6 @@ export default function Dashboard({ onNavigate }) {
   const [trendError, setTrendError] = useState(null);
   const [modelMetrics, setModelMetrics] = useState(null);
   const [metricsState, setMetricsState] = useState('loading');
-  const [datasetStats, setDatasetStats] = useState(null);
-  const [statsState, setStatsState] = useState('loading'); // loading | loaded | error
 
   useEffect(() => {
     let active = true;
@@ -220,31 +214,8 @@ export default function Dashboard({ onNavigate }) {
         setMetricsState('error');
       });
 
-    // Real dataset overview ranges (from the /stats backend source).
-    getDataStatistics()
-      .then(res => {
-        if (!active) return;
-        setDatasetStats(res);
-        setStatsState('loaded');
-      })
-      .catch(() => {
-        if (!active) return;
-        setStatsState('error');
-      });
-
     return () => { active = false; };
   }, []);
-
-  // Dataset overview ranges from the real /stats backend (min/max per column).
-  const rangeOf = (col) => {
-    const colStats = (datasetStats?.numerical || []).find(n => n.column === col);
-    if (!colStats || colStats.min == null || colStats.max == null) return null;
-    return { min: colStats.min, max: colStats.max };
-  };
-  const tempRange = rangeOf('Avg_Temperature');
-  const rainRange = rangeOf('Total_Rainfall');
-  const humRange = rangeOf('Avg_Humidity');
-  const regionCount = statsState === 'loaded' ? (datasetStats?.overview?.num_regions ?? REGIONS.length) : REGIONS.length;
 
   return (
     <div className="page-shell space-y-8">
@@ -292,70 +263,15 @@ export default function Dashboard({ onNavigate }) {
               <div>
                 <p className="text-2xl font-bold text-gray-900">{stat.getValue()}</p>
                 <p className="text-xs text-gray-500 font-medium">{stat.label}</p>
+                <p className="text-[11px] text-forest-600 mt-0.5">View all</p>
               </div>
             </button>
           );
         })}
       </div>
 
-      {statsState === 'loading' ? (
-        <div className="glass-card p-5">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="skeleton h-28" />
-            <div className="skeleton h-28" />
-            <div className="skeleton h-28" />
-            <div className="skeleton h-28" />
-          </div>
-        </div>
-      ) : (
-        <div className="glass-card p-4 sm:p-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-            <OverviewRangeCard
-              icon={Thermometer}
-              label="Temperature"
-              range={tempRange}
-              unit="°C"
-              digits={2}
-              iconBg="bg-red-50"
-              iconColor="text-red-500"
-            />
-            <OverviewRangeCard
-              icon={CloudRain}
-              label="Rainfall"
-              range={rainRange}
-              unit="mm"
-              digits={2}
-              iconBg="bg-sky-50"
-              iconColor="text-sky-600"
-            />
-            <OverviewRangeCard
-              icon={Droplets}
-              label="Humidity"
-              range={humRange}
-              unit="%"
-              digits={2}
-              iconBg="bg-cyan-50"
-              iconColor="text-cyan-600"
-            />
-            <button
-              type="button"
-              onClick={() => setOpenCatalog('regions')}
-              className="text-left rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest-400"
-            >
-              <OverviewCountCard
-                icon={MapPin}
-                label="Regions"
-                value={regionCount}
-                hint="Click to view all regions"
-                iconBg="bg-forest-50"
-                iconColor="text-forest-600"
-              />
-            </button>
-          </div>
-        </div>
-      )}
-
       <CatalogModal
+        key={openCatalog || 'closed'}
         catalog={openCatalog ? CATALOGS[openCatalog] : null}
         onClose={() => setOpenCatalog(null)}
       />
