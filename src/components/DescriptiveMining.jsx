@@ -7,6 +7,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { getDescriptiveMining, humanizeApiError } from '../services/apiService';
+import PageHeader, { InfoBanner } from './PageHeader';
 
 const CHART_COLORS = ['#2d9f63', '#e5a03c', '#2563eb', '#8b5cf6', '#06b6d4', '#dc2626'];
 
@@ -425,19 +426,13 @@ export default function DescriptiveMining() {
   }, []);
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-2">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-          <GitBranch size={22} className="text-white" />
-        </div>
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Descriptive Mining</h1>
-          <p className="text-sm text-gray-500">
-            Correlation · Association Rules · Frequent Patterns · Sequential Patterns
-          </p>
-        </div>
-      </div>
+    <div className="page-shell">
+      <PageHeader
+        icon={GitBranch}
+        title="Descriptive Mining"
+        subtitle="Correlation, association rules, frequent patterns, and sequential patterns."
+        gradient="from-amber-500 to-orange-500"
+      />
 
       {/* Loading */}
       {state === 'loading' && (
@@ -449,13 +444,9 @@ export default function DescriptiveMining() {
 
       {/* Error */}
       {state === 'error' && (
-        <div className="flex items-start gap-3 p-4 rounded-xl bg-red-50 border border-red-200">
-          <AlertCircle size={18} className="text-red-500 mt-0.5 shrink-0" />
-          <div>
-            <p className="text-sm font-medium text-red-700">Failed to load descriptive-mining results</p>
-            <p className="text-xs text-red-600 mt-0.5">{error}</p>
-          </div>
-        </div>
+        <InfoBanner icon={AlertCircle} title="Failed to load descriptive-mining results" tone="red">
+          {error}
+        </InfoBanner>
       )}
 
       {/* Empty (defensive) */}
@@ -470,15 +461,18 @@ export default function DescriptiveMining() {
       {state === 'loaded' && data && data.methodology && (
         <>
           {/* Tabs */}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" role="tablist" aria-label="Mining methods">
             {COMPONENT_TABS.map(tab => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-colors ${
                     isActive
                       ? 'bg-forest-600 text-white shadow-sm'
                       : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'

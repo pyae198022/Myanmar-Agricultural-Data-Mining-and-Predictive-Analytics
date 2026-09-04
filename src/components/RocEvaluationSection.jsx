@@ -149,7 +149,7 @@ export default function RocEvaluationSection() {
           </select>
         </div>
 
-        <div className="h-80 w-full">
+        <div className="h-[28rem] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />

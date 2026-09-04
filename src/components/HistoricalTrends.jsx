@@ -8,6 +8,7 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { getHistoricalOverview, humanizeApiError, REGIONS } from '../services/apiService';
+import PageHeader from './PageHeader';
 
 const TREND_META = {
   increasing: { label: 'Increasing', icon: TrendingUp, cls: 'text-forest-600 bg-forest-50' },
@@ -122,23 +123,14 @@ export default function HistoricalTrends({ onNavigate }) {
   const yearRange = validYearMin != null && validYearMax != null ? `${validYearMin} – ${validYearMax}` : '—';
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => onNavigate('dashboard')}
-            className="w-9 h-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors"
-            aria-label="Back to dashboard"
-          >
-            <ArrowLeft size={18} />
-          </button>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Historical Yield Trends</h1>
-            <p className="text-gray-500 mt-1">Explore real crop yield trends across regions and years.</p>
-          </div>
-        </div>
-      </div>
+    <div className="page-shell">
+      <PageHeader
+        icon={TrendingUp}
+        title="Historical Yield Trends"
+        subtitle="Explore real crop yield trends across regions and years."
+        gradient="from-cyan-500 to-blue-500"
+        onBack={() => onNavigate('dashboard')}
+      />
 
       {/* Filters */}
       <div className="glass-card p-5">

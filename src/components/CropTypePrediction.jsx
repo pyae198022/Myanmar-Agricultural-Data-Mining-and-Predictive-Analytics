@@ -1,7 +1,8 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Sprout, Zap, AlertCircle } from 'lucide-react';
 import PredictionForm, { DEFAULT_INPUTS } from './PredictionForm';
 import CropTypeResults from './CropTypeResults';
+import PageHeader, { InfoBanner, ResultsPlaceholder } from './PageHeader';
 import { predictCropType, fetchHealth, humanizeApiError } from '../services/apiService';
 
 export default function CropTypePrediction() {
@@ -11,12 +12,19 @@ export default function CropTypePrediction() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [availability, setAvailability] = useState(null);
+  const resultsRef = useRef(null);
 
   useEffect(() => {
     fetchHealth()
       .then(h => setAvailability(h.models_loaded?.crop_type || null))
       .catch(() => setAvailability(null));
   }, []);
+
+  useEffect(() => {
+    if (result && resultsRef.current) {
+      resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [result]);
 
   const handlePredict = useCallback(async () => {
     setLoading(true);
@@ -34,49 +42,25 @@ export default function CropTypePrediction() {
   }, [inputs, modelVariant]);
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
-      {/* Page Header */}
-      <div>
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-forest-500 to-earth-500 flex items-center justify-center">
-            <Sprout size={22} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-              Crop Type Prediction
-            </h1>
-            <p className="text-sm text-gray-500">
-              Classification · Predict the most suitable crop before planting
-            </p>
-          </div>
-        </div>
-      </div>
+    <div className="page-shell-wide">
+      <PageHeader
+        icon={Sprout}
+        title="Crop Type Prediction"
+        subtitle="Recommend the most suitable crop from soil, weather, and water conditions."
+        gradient="from-forest-500 to-earth-500"
+      />
 
-      {/* How it works banner */}
-      <div className="flex items-start gap-3 p-4 rounded-xl bg-forest-50 border border-forest-100">
-        <Zap size={18} className="text-forest-600 mt-0.5 shrink-0" />
-        <div>
-          <p className="text-sm font-medium text-forest-800">How it works</p>
-          <p className="text-xs text-forest-600 mt-0.5">
-            Enter your region's environmental conditions below. The model analyzes soil type,
-            water source, temperature, rainfall, and humidity to recommend the optimal crop
-            type with confidence scores and feature importance analysis.
-          </p>
-        </div>
-      </div>
+      <InfoBanner icon={Zap} title="How it works" tone="forest">
+        Enter regional conditions. The model uses soil type, water source, temperature,
+        rainfall, and humidity to recommend a crop with confidence scores and feature importance.
+      </InfoBanner>
 
-      {/* Error banner */}
       {error && (
-        <div className="flex items-start gap-3 p-4 rounded-xl bg-red-50 border border-red-200">
-          <AlertCircle size={18} className="text-red-500 mt-0.5 shrink-0" />
-          <div>
-            <p className="text-sm font-medium text-red-700">Prediction failed</p>
-            <p className="text-xs text-red-600 mt-0.5">{error}</p>
-          </div>
-        </div>
+        <InfoBanner icon={AlertCircle} title="Prediction failed" tone="red">
+          {error}
+        </InfoBanner>
       )}
 
-      {/* Prediction Form */}
       <PredictionForm
         inputs={inputs}
         setInputs={setInputs}
@@ -89,19 +73,22 @@ export default function CropTypePrediction() {
         availability={availability}
       />
 
-      {/* Loading */}
-      {loading && (
-        <div className="flex items-center justify-center py-16">
-          <div className="text-center">
-            <div className="w-12 h-12 border-4 border-forest-200 border-t-forest-600 rounded-full animate-spin mx-auto mb-4" />
+      <div ref={resultsRef} aria-live="polite">
+        {loading && (
+          <div className="glass-card p-10 flex flex-col items-center justify-center min-h-[200px]">
+            <div className="w-12 h-12 border-4 border-forest-200 border-t-forest-600 rounded-full animate-spin mb-4" />
             <p className="text-sm font-medium text-gray-600">Analyzing conditions...</p>
-            <p className="text-xs text-gray-400 mt-1">Running {modelVariant} model</p>
+            <p className="text-xs text-gray-400 mt-1">Running {modelVariant.replaceAll('_', ' ')} model</p>
           </div>
-        </div>
-      )}
-
-      {/* Results */}
-      {result && !loading && <CropTypeResults result={result} />}
+        )}
+        {result && !loading && <CropTypeResults result={result} />}
+        {!result && !loading && (
+          <ResultsPlaceholder
+            title="No prediction yet"
+            hint="Set conditions above, then run Predict Crop Type. Charts and recommendations will use the full width of this page."
+          />
+        )}
+      </div>
     </div>
   );
 }

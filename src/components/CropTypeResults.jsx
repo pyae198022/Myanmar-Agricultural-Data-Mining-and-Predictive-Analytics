@@ -109,7 +109,7 @@ export default function CropTypeResults({ result }) {
         {/* Top Predictions Bar Chart */}
         <div className="glass-card p-5">
           <h4 className="text-sm font-semibold text-gray-800 mb-4">Top Crop Probabilities</h4>
-          <div className="h-56">
+          <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={topPredictions} layout="vertical">
                 <XAxis
@@ -149,7 +149,7 @@ export default function CropTypeResults({ result }) {
         {/* Feature Importance Pie */}
         <div className="glass-card p-5">
           <h4 className="text-sm font-semibold text-gray-800 mb-4">Feature Importance</h4>
-          <div className="h-56">
+          <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -205,7 +205,7 @@ export default function CropTypeResults({ result }) {
         {/* Radar Chart */}
         <div className="glass-card p-5">
           <h4 className="text-sm font-semibold text-gray-800 mb-4">Model Performance Radar</h4>
-          <div className="h-56">
+          <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="75%">
                 <PolarGrid stroke="#e5e7eb" />

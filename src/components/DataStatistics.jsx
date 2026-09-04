@@ -7,6 +7,7 @@ import {
   BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { getDataStatistics, humanizeApiError } from '../services/apiService';
+import PageHeader, { InfoBanner } from './PageHeader';
 
 const CHART_COLORS = ['#2d9f63', '#e5a03c', '#2563eb', '#8b5cf6', '#06b6d4', '#dc2626', '#ec4899', '#10b981', '#f59e0b'];
 
@@ -197,19 +198,13 @@ export default function DataStatistics() {
   }, []);
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-2">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-forest-500 to-emerald-600 flex items-center justify-center">
-          <Database size={22} className="text-white" />
-        </div>
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Data Statistics</h1>
-          <p className="text-sm text-gray-500">
-            Descriptive statistics computed from the real dataset (cleaned_data.csv)
-          </p>
-        </div>
-      </div>
+    <div className="page-shell">
+      <PageHeader
+        icon={Database}
+        title="Data Statistics"
+        subtitle="Descriptive statistics computed from the dataset (cleaned_data.csv)."
+        gradient="from-indigo-500 to-purple-500"
+      />
 
       {/* Loading */}
       {state === 'loading' && (
@@ -221,13 +216,9 @@ export default function DataStatistics() {
 
       {/* Error */}
       {state === 'error' && (
-        <div className="flex items-start gap-3 p-4 rounded-xl bg-red-50 border border-red-200">
-          <AlertCircle size={18} className="text-red-500 mt-0.5 shrink-0" />
-          <div>
-            <p className="text-sm font-medium text-red-700">Failed to load dataset statistics</p>
-            <p className="text-xs text-red-600 mt-0.5">{error}</p>
-          </div>
-        </div>
+        <InfoBanner icon={AlertCircle} title="Failed to load dataset statistics" tone="red">
+          {error}
+        </InfoBanner>
       )}
 
       {/* Empty (defensive) */}

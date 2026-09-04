@@ -121,7 +121,7 @@ export default function CropYieldResults({ result, inputs }) {
       <div className="glass-card p-5">
         <h4 className="text-sm font-semibold text-gray-800 mb-4">Feature Importance</h4>
         {barData.length > 0 ? (
-          <div className="h-64">
+          <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={barData} layout="vertical">
                 <XAxis

@@ -8,6 +8,7 @@ import {
   Star, XCircle,
 } from 'lucide-react';
 import PredictionForm, { DEFAULT_INPUTS } from './PredictionForm';
+import PageHeader, { InfoBanner, ResultsPlaceholder } from './PageHeader';
 import { getModelComparison, humanizeApiError } from '../services/apiService';
 import RocEvaluationSection from './RocEvaluationSection';
 
@@ -175,7 +176,7 @@ function ComparisonTable({ comparison, task }) {
             <h4 className="text-sm font-semibold text-gray-800 mb-4">
               Metrics Comparison (Bar Chart)
             </h4>
-            <div className="h-72">
+            <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={metricRows} barCategoryGap="20%">
                   <XAxis dataKey="metric" tick={{ fontSize: 10, fill: '#374151' }} axisLine={false} tickLine={false} />
@@ -194,9 +195,9 @@ function ComparisonTable({ comparison, task }) {
           {/* Radar Chart Comparison */}
           <div className="glass-card p-5">
             <h4 className="text-sm font-semibold text-gray-800 mb-4">Performance Radar</h4>
-            <div className="h-72">
+            <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
+                <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="78%">
                   <PolarGrid stroke="#e5e7eb" />
                   <PolarAngleAxis dataKey="metric" tick={{ fontSize: 10, fill: '#6b7280' }} />
                   <PolarRadiusAxis angle={90} domain={[0, 1]} tick={{ fontSize: 9, fill: '#9ca3af' }} />
@@ -279,6 +280,12 @@ function MetricRow({ label, value, task, metricKey }) {
   );
 }
 
+const TASKS = [
+  { id: 'crop_type', label: 'Crop Type' },
+  { id: 'yield_level', label: 'Yield Level' },
+  { id: 'crop_yield', label: 'Crop Yield' },
+];
+
 export default function ModelComparison() {
   const [inputs, setInputs] = useState({ ...DEFAULT_INPUTS });
   const [modelVariant, setModelVariant] = useState('feature_engineering');
@@ -303,81 +310,44 @@ export default function ModelComparison() {
   }, [inputs, task]);
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
-      {/* Page Header */}
-      <div>
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
-            <GitCompare size={22} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Model Comparison</h1>
-            <p className="text-sm text-gray-500">
-              Side-by-Side · Compare Baseline, Feature Engineering &amp; Advanced models
-            </p>
-          </div>
-        </div>
-      </div>
+    <div className="page-shell-wide">
+      <PageHeader
+        icon={GitCompare}
+        title="Model Comparison"
+        subtitle="Run Baseline, Feature Engineering, and Advanced models on the same inputs."
+        gradient="from-blue-500 to-indigo-500"
+      />
 
-      {/* Info */}
-      <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-50 border border-blue-100">
-        <Zap size={18} className="text-blue-600 mt-0.5 shrink-0" />
-        <div>
-          <p className="text-sm font-medium text-blue-800">Compare All Models</p>
-          <p className="text-xs text-blue-600 mt-0.5">
-            Run predictions across all real available model variants and compare their
-            performance metrics directly from the backend. Unavailable/guarded variants
-            are clearly marked.
-          </p>
-        </div>
-      </div>
+      <InfoBanner icon={Zap} title="Compare all models" tone="blue">
+        Predictions and metrics come from the backend. Unavailable variants are marked so you
+        can see which pipelines actually ran.
+      </InfoBanner>
 
-      {/* Error banner */}
       {error && (
-        <div className="flex items-start gap-3 p-4 rounded-xl bg-red-50 border border-red-200">
-          <AlertCircle size={18} className="text-red-500 mt-0.5 shrink-0" />
-          <div>
-            <p className="text-sm font-medium text-red-700">Comparison failed</p>
-            <p className="text-xs text-red-600 mt-0.5">{error}</p>
-          </div>
-        </div>
+        <InfoBanner icon={AlertCircle} title="Comparison failed" tone="red">
+          {error}
+        </InfoBanner>
       )}
 
-      {/* Task Selector */}
-      <div className="flex flex-wrap gap-3">
-        <button
-          onClick={() => { setTask('crop_type'); setComparison(null); }}
-          className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-            task === 'crop_type'
-              ? 'bg-forest-600 text-white shadow-md'
-              : 'bg-white text-gray-600 border border-gray-200 hover:border-forest-300'
-          }`}
-        >
-          🌱 Crop Type
-        </button>
-        <button
-          onClick={() => { setTask('yield_level'); setComparison(null); }}
-          className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-            task === 'yield_level'
-              ? 'bg-forest-600 text-white shadow-md'
-              : 'bg-white text-gray-600 border border-gray-200 hover:border-forest-300'
-          }`}
-        >
-          📊 Yield Level
-        </button>
-        <button
-          onClick={() => { setTask('crop_yield'); setComparison(null); }}
-          className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-            task === 'crop_yield'
-              ? 'bg-harvest-600 text-white shadow-md'
-              : 'bg-white text-gray-600 border border-gray-200 hover:border-harvest-300'
-          }`}
-        >
-          📈 Crop Yield
-        </button>
+      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Comparison task">
+        {TASKS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={task === t.id}
+            onClick={() => { setTask(t.id); setComparison(null); }}
+            className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+              task === t.id
+                ? 'bg-forest-600 text-white shadow-sm'
+                : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      {/* Form - compare all variants */}
       <PredictionForm
         inputs={inputs}
         setInputs={setInputs}
@@ -391,21 +361,22 @@ export default function ModelComparison() {
         task={task}
       />
 
-      {/* Loading */}
-      {loading && (
-        <div className="flex items-center justify-center py-16">
-          <div className="text-center">
-            <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
+      <div className="space-y-6" aria-live="polite">
+        {loading && (
+          <div className="glass-card p-10 flex flex-col items-center justify-center min-h-[200px]">
+            <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4" />
             <p className="text-sm font-medium text-gray-600">Running all models...</p>
           </div>
-        </div>
-      )}
-
-      {/* Comparison Results */}
-      {comparison && !loading && <ComparisonTable comparison={comparison} task={task} />}
-
-      {/* Chapter 4 ROC / AUC Evaluation (Crop Type only) */}
-      {task === 'crop_type' && !loading && <RocEvaluationSection />}
+        )}
+        {comparison && !loading && <ComparisonTable comparison={comparison} task={task} />}
+        {!comparison && !loading && (
+          <ResultsPlaceholder
+            title="No comparison yet"
+            hint="Choose a task and conditions above, then compare all models. Side-by-side cards, charts, and ROC curves will use the full page width."
+          />
+        )}
+        {task === 'crop_type' && !loading && <RocEvaluationSection />}
+      </div>
     </div>
   );
 }

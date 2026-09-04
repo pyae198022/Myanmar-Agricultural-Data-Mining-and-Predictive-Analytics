@@ -1,7 +1,8 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { BarChart3, Zap, AlertCircle } from 'lucide-react';
 import PredictionForm, { DEFAULT_INPUTS } from './PredictionForm';
 import CropYieldResults from './CropYieldResults';
+import PageHeader, { InfoBanner, ResultsPlaceholder } from './PageHeader';
 import {
   predictCropYield, predictYieldLevel, fetchHealth, humanizeApiError,
 } from '../services/apiService';
@@ -13,6 +14,7 @@ export default function CropYieldPrediction() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [availability, setAvailability] = useState(null);
+  const resultsRef = useRef(null);
 
   useEffect(() => {
     fetchHealth()
@@ -20,18 +22,22 @@ export default function CropYieldPrediction() {
       .catch(() => setAvailability(null));
   }, []);
 
+  useEffect(() => {
+    if (result && resultsRef.current) {
+      resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [result]);
+
   const handlePredict = useCallback(async () => {
     setLoading(true);
     setResult(null);
     setError(null);
     try {
       const regression = await predictCropYield(inputs, modelVariant);
-      // Yield level (binary Low/High) comes from the real yield-level model.
       let level = null;
       try {
         level = await predictYieldLevel(inputs, modelVariant);
       } catch {
-        // If the yield-level variant is unavailable, still show regression output.
         level = null;
       }
       setResult({ ...regression, yieldLevelInfo: level });
@@ -44,49 +50,25 @@ export default function CropYieldPrediction() {
   }, [inputs, modelVariant]);
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
-      {/* Page Header */}
-      <div>
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-harvest-500 to-harvest-600 flex items-center justify-center">
-            <BarChart3 size={22} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-              Crop Yield Prediction
-            </h1>
-            <p className="text-sm text-gray-500">
-              Regression + Classification · Predict production tonnage &amp; yield level
-            </p>
-          </div>
-        </div>
-      </div>
+    <div className="page-shell-wide">
+      <PageHeader
+        icon={BarChart3}
+        title="Crop Yield Prediction"
+        subtitle="Estimate production tonnage and whether yield is likely Low or High."
+        gradient="from-harvest-500 to-harvest-600"
+      />
 
-      {/* Info Banner */}
-      <div className="flex items-start gap-3 p-4 rounded-xl bg-harvest-50 border border-harvest-100">
-        <Zap size={18} className="text-harvest-600 mt-0.5 shrink-0" />
-        <div>
-          <p className="text-sm font-medium text-harvest-800">How it works</p>
-          <p className="text-xs text-harvest-600 mt-0.5">
-            Select a crop type and enter environmental conditions. The model performs
-            regression (predicting yield in tons) and classification (categorizing yield
-            as Low or High). The backend supplies all values — nothing is fabricated.
-          </p>
-        </div>
-      </div>
+      <InfoBanner icon={Zap} title="How it works" tone="harvest">
+        Select a crop and enter environmental conditions. Regression predicts yield in tons;
+        classification labels it Low or High. All values come from the backend.
+      </InfoBanner>
 
-      {/* Error banner */}
       {error && (
-        <div className="flex items-start gap-3 p-4 rounded-xl bg-red-50 border border-red-200">
-          <AlertCircle size={18} className="text-red-500 mt-0.5 shrink-0" />
-          <div>
-            <p className="text-sm font-medium text-red-700">Prediction failed</p>
-            <p className="text-xs text-red-600 mt-0.5">{error}</p>
-          </div>
-        </div>
+        <InfoBanner icon={AlertCircle} title="Prediction failed" tone="red">
+          {error}
+        </InfoBanner>
       )}
 
-      {/* Form */}
       <PredictionForm
         inputs={inputs}
         setInputs={setInputs}
@@ -100,19 +82,22 @@ export default function CropYieldPrediction() {
         availability={availability}
       />
 
-      {/* Loading */}
-      {loading && (
-        <div className="flex items-center justify-center py-16">
-          <div className="text-center">
-            <div className="w-12 h-12 border-4 border-harvest-200 border-t-harvest-600 rounded-full animate-spin mx-auto mb-4" />
+      <div ref={resultsRef} aria-live="polite">
+        {loading && (
+          <div className="glass-card p-10 flex flex-col items-center justify-center min-h-[200px]">
+            <div className="w-12 h-12 border-4 border-harvest-200 border-t-harvest-600 rounded-full animate-spin mb-4" />
             <p className="text-sm font-medium text-gray-600">Estimating yield...</p>
             <p className="text-xs text-gray-400 mt-1">Running regression + classification</p>
           </div>
-        </div>
-      )}
-
-      {/* Results */}
-      {result && !loading && <CropYieldResults result={result} inputs={inputs} />}
+        )}
+        {result && !loading && <CropYieldResults result={result} inputs={inputs} />}
+        {!result && !loading && (
+          <ResultsPlaceholder
+            title="No yield estimate yet"
+            hint="Choose a crop and conditions above, then run Predict Yield. Production and yield level will show at full width below."
+          />
+        )}
+      </div>
     </div>
   );
 }
