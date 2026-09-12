@@ -1,0 +1,172 @@
+{
+  "version": "1.0.0",
+  "description": "Model artifacts manifest for external storage deployment",
+  "storage_base_url_env": "MODEL_STORAGE_BASE_URL",
+  "artifacts": [
+    {
+      "relative_path": "crop_type/baseline.joblib",
+      "sha256": "4dc5a44feba8d165ad18cda9b8439e65727e31163ec59e69ec8ac40cfa1bc4c1",
+      "size_bytes": 454236426,
+      "description": "Crop type baseline model (433MB)"
+    },
+    {
+      "relative_path": "crop_type/baseline_metrics.json",
+      "sha256": "f39f54f76dffac6de851ed857731e17c58478631ecd5e6f1511b064aa4f743f3",
+      "size_bytes": 984,
+      "description": "Crop type baseline metrics"
+    },
+    {
+      "relative_path": "crop_type/baseline_preprocessor.joblib",
+      "sha256": "02f5f88896e07cd278af9f35aebf8d576317119a18f9fdc37d71ce70dfc18842",
+      "size_bytes": 3395,
+      "description": "Crop type baseline preprocessor"
+    },
+    {
+      "relative_path": "crop_type/feature_engineering.joblib",
+      "sha256": "b1792a2c3494349297beec1a83a54aff5abfebf33a2e1762fdca215e2d7a26b0",
+      "size_bytes": 455336723,
+      "description": "Crop type feature engineering model (434MB)"
+    },
+    {
+      "relative_path": "crop_type/feature_engineering_metrics.json",
+      "sha256": "bcd7e7fa3f07c7705d2486dc8433e47ed153ce3a368c01e665cb20906c8f1b60",
+      "size_bytes": 1171,
+      "description": "Crop type feature engineering metrics"
+    },
+    {
+      "relative_path": "crop_type/feature_engineering_preprocessor.joblib",
+      "sha256": "90d6aeea948709f6fb173dff311c3993a6ab3c715390e22a8903e563f1eff0e9",
+      "size_bytes": 4094,
+      "description": "Crop type feature engineering preprocessor"
+    },
+    {
+      "relative_path": "crop_yield/advanced.joblib",
+      "sha256": "a16d0bf81adf75db5df675a1321bf287e6702383254b5a5d599d487c42bb6b8c",
+      "size_bytes": 106918362,
+      "description": "Crop yield advanced model (102MB)"
+    },
+    {
+      "relative_path": "crop_yield/advanced_metrics.json",
+      "sha256": "79dcc8020fe80d2c95ce524687684d0913f9d350713c67917aa58b5f9334c487",
+      "size_bytes": 1865,
+      "description": "Crop yield advanced metrics"
+    },
+    {
+      "relative_path": "crop_yield/advanced_preprocessor.joblib",
+      "sha256": "26cd8dfa07eae5fe4446066dc926065a30306df9dce8ce738d24c996f36872b7",
+      "size_bytes": 24735,
+      "description": "Crop yield advanced preprocessor"
+    },
+    {
+      "relative_path": "crop_yield/association_rules.csv",
+      "sha256": "fb57cffb59ae4d5b2bf3608f849aabcd29a2a3cc37377157b9afed2d10bddfd2",
+      "size_bytes": 1914,
+      "description": "Crop yield association rules"
+    },
+    {
+      "relative_path": "crop_yield/baseline.joblib",
+      "sha256": "58349b14709029e4b4728d57a95a5d8f0ddc4d142a208087bbe11f7528dd41a3",
+      "size_bytes": 105778554,
+      "description": "Crop yield baseline model (101MB)"
+    },
+    {
+      "relative_path": "crop_yield/baseline_metrics.json",
+      "sha256": "49b2cc793dd02a9fe5da66983695d14b8d205d7b88868cdddddef786c4605673",
+      "size_bytes": 1473,
+      "description": "Crop yield baseline metrics"
+    },
+    {
+      "relative_path": "crop_yield/baseline_preprocessor.joblib",
+      "sha256": "da220150e3f10c06b9c835066148d33e4ac40ad3c226311fc6feb7982fa247cf",
+      "size_bytes": 4262,
+      "description": "Crop yield baseline preprocessor"
+    },
+    {
+      "relative_path": "crop_yield/feature_engineering.joblib",
+      "sha256": "c8564814d334507f3127c3bd732d34a9ce24d123f1ae6dc5f032e6da206dda11",
+      "size_bytes": 106479898,
+      "description": "Crop yield feature engineering model (101MB)"
+    },
+    {
+      "relative_path": "crop_yield/feature_engineering_metrics.json",
+      "sha256": "aab0d52ce935ead9d484f4aad5f59939c2f596226a7d20a659c6cd8ece3c2301",
+      "size_bytes": 1239,
+      "description": "Crop yield feature engineering metrics"
+    },
+    {
+      "relative_path": "crop_yield/feature_engineering_preprocessor.joblib",
+      "sha256": "0f2f6accd0af3e3d014b5060eb64e6ecc323b24fd970751d273bc30c7220a40e",
+      "size_bytes": 24195,
+      "description": "Crop yield feature engineering preprocessor"
+    },
+    {
+      "relative_path": "model_registry.json",
+      "sha256": "9930c598320341a395bb9c514a8186841c9793a8cf86ee7da6211d0d3d1e3505",
+      "size_bytes": 14988,
+      "description": "Model registry configuration"
+    },
+    {
+      "relative_path": "yield_level/advanced.joblib",
+      "sha256": "00641f748c4ab1508994c65c407e2ad1fdcd6afd5f83dd51fc793b826dda200d",
+      "size_bytes": 842049,
+      "description": "Yield level advanced model (822KB)"
+    },
+    {
+      "relative_path": "yield_level/advanced_metrics.json",
+      "sha256": "84f22dadc2fc37f3b433f46dc943dcaf97000169318869c0b40ed891573636b4",
+      "size_bytes": 1804,
+      "description": "Yield level advanced metrics"
+    },
+    {
+      "relative_path": "yield_level/advanced_preprocessor.joblib",
+      "sha256": "9c298d589a2158eb513cb52191144518a2acab2cb0c04f1df14fca0f712fa4a1",
+      "size_bytes": 4,
+      "description": "Yield level advanced preprocessor (empty/minimal)"
+    },
+    {
+      "relative_path": "yield_level/association_rules.csv",
+      "sha256": "435ce938a8dee745b7a49461160b61bcf0ddae5a59245b229c95489a1c97d652",
+      "size_bytes": 1914,
+      "description": "Yield level association rules"
+    },
+    {
+      "relative_path": "yield_level/baseline.joblib",
+      "sha256": "fe81f24f06ecc66de41404a685bb0dd66f8f9182e7ab6b31c2daae29693b889e",
+      "size_bytes": 173624,
+      "description": "Yield level baseline model (170KB)"
+    },
+    {
+      "relative_path": "yield_level/baseline_metrics.json",
+      "sha256": "86bb13542b9ac80f8ee5e4b88035e8a402da583289f8dd25b91cdeb60541b06b",
+      "size_bytes": 1286,
+      "description": "Yield level baseline metrics"
+    },
+    {
+      "relative_path": "yield_level/baseline_preprocessor.joblib",
+      "sha256": "a0892e719bbe6c991e8da460bdd1f5e63295e25f70b9b36ced82cc459ec793dd",
+      "size_bytes": 7552,
+      "description": "Yield level baseline preprocessor"
+    },
+    {
+      "relative_path": "yield_level/feature_engineering.joblib",
+      "sha256": "6b0905d934a9c93ecd3767d963320c6475c1c2def3fba16735a5485bf4df8645",
+      "size_bytes": 802485,
+      "description": "Yield level feature engineering model (784KB)"
+    },
+    {
+      "relative_path": "yield_level/feature_engineering_metrics.json",
+      "sha256": "659bf368afe59cdc070b893c7e609272ca2bf33b29a49ca38ddae37f672d6bd8",
+      "size_bytes": 1298,
+      "description": "Yield level feature engineering metrics"
+    },
+    {
+      "relative_path": "yield_level/feature_engineering_preprocessor.joblib",
+      "sha256": "a0404b9c3fd3fcfb1c8eb7804407ed3f49e9be68d78dbac3a7c086f03c4f2094",
+      "size_bytes": 76480,
+      "description": "Yield level feature engineering preprocessor"
+    }
+  ],
+  "total_size_bytes": 1180260611,
+  "total_size_mb": 1125.5,
+  "generated_at": "2026-09-12"
+}

@@ -12,6 +12,16 @@ dist
 dist-ssr
 *.local
 
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.staging
+backend/.env
+backend/.env.*
+
 # Python
 __pycache__/
 *.pyc
@@ -24,9 +34,6 @@ venv/
 backend/.venv/
 backend/venv/
 
-# ML models
-backend/models/
-
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -37,3 +44,14 @@ backend/models/
 *.njsproj
 *.sln
 *.sw?
+
+# ML models - stored externally (see model download mechanism)
+backend/models/
+
+# Python build artifacts
+*.egg-info/
+.eggs/
+build/
+backend/build/
+pip-wheel-metadata/
+*.whl
