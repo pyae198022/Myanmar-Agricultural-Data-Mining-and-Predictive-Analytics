@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "description": "Model artifacts manifest for external storage deployment",
-  "storage_base_url_env": "MODEL_STORAGE_BASE_URL",
+  "description": "Model artifacts manifest for Backblaze B2 storage deployment",
+  "storage_type": "backblaze_b2",
   "artifacts": [
     {
       "relative_path": "crop_type/baseline.joblib",
@@ -166,7 +166,7 @@
       "description": "Yield level feature engineering preprocessor"
     }
   ],
-  "total_size_bytes": 1180260611,
-  "total_size_mb": 1125.5,
+  "total_size_bytes": 1230742774,
+  "total_size_mb": 1173.7,
   "generated_at": "2026-09-12"
 }

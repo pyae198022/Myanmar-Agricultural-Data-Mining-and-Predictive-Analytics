@@ -282,6 +282,86 @@ def test_historical_missing_data_returns_404():
     assert resp.status_code == 404, resp.text
 
 
+# ── Clustering endpoints ─────────────────────────────────────────────────────
+
+def test_clustering_overview_endpoint():
+    resp = client.get("/api/clustering/overview")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+
+    assert body["total_records"] == 5940
+    assert body["n_clusters"] == 8
+    assert body["selected_k"] == 8
+    # Primary silhouette should be Chapter 4.3 evaluation (0.053031)
+    assert abs(body["overall_silhouette"] - 0.053031) < 1e-4
+    assert body["hopkins_statistic"] > 0.5
+
+    distribution = body["cluster_distribution"]
+    assert len(distribution) == 8
+    assert sum(row["count"] for row in distribution) == 5940
+    expected_counts = [490, 1312, 844, 917, 789, 853, 341, 394]
+    assert [row["count"] for row in distribution] == expected_counts
+
+
+def test_clustering_optimal_k_endpoint():
+    resp = client.get("/api/clustering/optimal-k")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+
+    assert body["candidate_k"] == list(range(2, 11))
+    assert body["selected_k"] == 8
+    assert len(body["results"]) == 9
+
+    selected = next(row for row in body["results"] if row["k"] == 8)
+    assert selected["is_selected"] is True
+    assert abs(selected["silhouette_score"] - 0.307068) < 1e-4
+
+
+def test_clustering_profiles_endpoint():
+    resp = client.get("/api/clustering/profiles")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+
+    assert body["total_records"] == 5940
+    assert body["selected_k"] == 8
+    assert len(body["profiles"]) == 8
+
+    cluster0 = next(row for row in body["profiles"] if row["cluster_id"] == 0)
+    assert cluster0["count"] == 490
+    assert cluster0["dominant_region"] == "Mandalay"
+    assert cluster0["dominant_crop_type"] == "Paddy"
+    assert cluster0["dominant_soil_type"] == "Luvisols / Cambisols / Savanna"
+    assert cluster0["dominant_water_source"] == "Rainfed"
+    assert "Cluster 0" in cluster0["interpretation_rule"]
+    assert set(cluster0["numeric_means"].keys()) == {
+        "Sown_Acre",
+        "Harvested_Acre",
+        "Production_Ton",
+        "Fertilizer_Import_Value(USD)",
+        "Avg_Temperature",
+        "Total_Rainfall",
+        "Myanmar_GDP_USD",
+        "Avg_Humidity",
+    }
+
+
+def test_clustering_evaluation_endpoint():
+    resp = client.get("/api/clustering/evaluation")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+
+    # Ground truth from Project Book Chapter 4.3 evaluation: 0.053031
+    # Using StandardScaler with evaluation features (Crop_Yield included, Myanmar_GDP_USD excluded)
+    assert abs(body["overall_silhouette"] - 0.053031) < 1e-4
+    assert body["overall_quality"] == "Weak"
+    assert len(body["per_cluster"]) == 8
+
+    strongest = body["strongest_cluster"]
+    assert strongest["cluster_id"] == 7  # Cluster 7 has highest silhouette (0.4484)
+    assert strongest["quality"] == "Fair"
+    assert abs(strongest["mean_silhouette"] - 0.4484) < 1e-4
+
+
 # ── 9,10,11. No fake/random/hash/mock inference in backend ─────────────────
 
 def test_no_hash_based_encoding():
@@ -310,3 +390,184 @@ def test_no_mock_inference_in_backend():
 def test_registry_crop_type_advanced_not_available():
     reg = reference.load_registry()
     assert reg["crop_type"]["advanced"]["status"] == "NOT_AVAILABLE"
+
+
+# ── Crop Yield evaluation: Actual vs Predicted ───────────────────────────────
+
+def test_crop_yield_actual_vs_predicted_fe():
+    resp = client.get("/api/evaluation/crop-yield/actual-vs-predicted?variant=feature_engineering")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["available"] is True
+    assert body["n_test"] == 495  # real 2023 held-out crop_yield test set
+    assert len(body["points"]) == 495
+    assert abs(body["metrics"]["r2"] - 0.9867314439759981) < 1e-3
+    for pt in body["points"][:5]:
+        assert "actual" in pt and "predicted" in pt and "year" in pt and "crop_type" in pt
+        assert np.isfinite(pt["actual"]) and np.isfinite(pt["predicted"])
+
+
+def test_crop_yield_actual_vs_predicted_advanced():
+    resp = client.get("/api/evaluation/crop-yield/actual-vs-predicted?variant=advanced")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["available"] is True
+    assert body["n_test"] == 495
+    assert abs(body["metrics"]["r2"] - 0.9870587873710347) < 1e-3
+
+
+def test_crop_yield_actual_vs_predicted_baseline_unavailable():
+    resp = client.get("/api/evaluation/crop-yield/actual-vs-predicted?variant=baseline")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["available"] is False
+    assert body["points"] == []
+    assert body["n_test"] == 0
+
+
+# ── Crop Yield evaluation: Cross-Validation ──────────────────────────────────
+
+def test_crop_yield_cross_validation_reference():
+    resp = client.get("/api/evaluation/crop-yield/cross-validation")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert [m["label"] for m in body["models"]] == [
+        "Baseline NN", "Feature Engineering NN", "Association-Enhanced NN",
+    ]
+    # Project Book documented values
+    fe = body["models"][1]
+    assert abs(fe["r2"]["mean"] - 0.9765) < 1e-4
+    assert abs(fe["rmse"]["mean"] - 0.6062) < 1e-4
+    assert abs(fe["mae"]["mean"] - 0.1978) < 1e-4
+    # Random Forest must not be implied to have CV results
+    assert body["deployed_algorithms"]["feature_engineering"] == "RandomForestRegressor"
+    assert "Random Forest" in body["note"]
+
+
+# ── Crop Yield evaluation: Feature Importance ────────────────────────────────
+
+def test_crop_yield_feature_importance_advanced():
+    resp = client.get("/api/evaluation/crop-yield/feature-importance?variant=advanced")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["available"] is True
+    assert body["type"] == "Feature Importance"
+    assert body["method"] == "native_random_forest"
+    feats = body["features"]
+    assert len(feats) > 0
+    # Sorted descending by importance
+    imps = [f["importance"] for f in feats]
+    assert imps == sorted(imps, reverse=True)
+    assert abs(sum(imps) - 1.0) < 0.02
+
+
+def test_crop_yield_feature_importance_fe():
+    resp = client.get("/api/evaluation/crop-yield/feature-importance?variant=feature_engineering")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["available"] is True
+    assert len(body["features"]) == 12
+
+
+def test_crop_yield_feature_importance_baseline_unavailable():
+    resp = client.get("/api/evaluation/crop-yield/feature-importance?variant=baseline")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["available"] is False
+    assert body["features"] == []
+
+
+# ── Crop Yield Level evaluation: binary ROC / AUC ────────────────────────────
+
+def test_yield_level_roc_fe():
+    resp = client.get("/api/evaluation/yield-level/roc?variant=feature_engineering")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["available"] is True
+    assert body["classification_type"] == "binary"
+    assert body["roc_method"] == "standard binary ROC (pos_label=High)"
+    assert body["n_test"] == 495
+    # Standard binary AUC (not One-vs-Rest). Computed live from the deployed MLP.
+    assert 0.0 <= body["auc"] <= 1.0
+    assert len(body["curve"]["fpr"]) == len(body["curve"]["tpr"])
+    # AUC must be well above random (0.5) for a real trained model.
+    assert body["auc"] > 0.9
+
+
+def test_yield_level_roc_advanced():
+    resp = client.get("/api/evaluation/yield-level/roc?variant=advanced")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["available"] is True
+    assert body["n_test"] == 495
+    assert body["auc"] > 0.9
+
+
+def test_yield_level_roc_baseline_unavailable():
+    resp = client.get("/api/evaluation/yield-level/roc?variant=baseline")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["available"] is False
+    assert body["auc"] is None
+    assert body["curve"] is None
+    assert "guarded" in body["reason"]
+
+
+def test_yield_level_roc_available():
+    resp = client.get("/api/evaluation/yield-level/roc/available")
+    assert resp.status_code == 200
+    body = resp.json()
+    variants = {m["variant"]: m["available"] for m in body["models"]}
+    assert variants["feature_engineering"] is True
+    assert variants["advanced"] is True
+    assert variants["baseline"] is False
+
+
+# ── Crop Yield Level evaluation: 5-Fold Stratified CV ────────────────────────
+
+def test_yield_level_cross_validation_values():
+    resp = client.get("/api/evaluation/yield-level/cross-validation")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["method"].startswith("5-Fold Stratified")
+    assert "2012-2022" in body["data_scope"]
+
+    by_var = {m["variant"]: m for m in body["models"]}
+    assert "feature_engineering" in by_var and "advanced" in by_var
+    assert "baseline" not in by_var  # excluded (leakage-guarded)
+
+    fe = by_var["feature_engineering"]
+    assert fe["n_train"] == 5445
+    assert fe["n_splits"] == 5
+    # Real computed values (reproducible: fixed StratifiedKFold random_state=42).
+    assert abs(fe["accuracy"]["mean"] - 91.68) < 0.5
+    assert abs(fe["precision"]["mean"] - 91.71) < 1.0
+    assert abs(fe["recall"]["mean"] - 91.74) < 1.0
+    assert abs(fe["f1"]["mean"] - 91.67) < 0.5
+    assert abs(fe["roc_auc"]["mean"] - 0.9809) < 0.005
+
+    adv = by_var["advanced"]
+    assert adv["n_train"] == 5445
+    assert abs(adv["accuracy"]["mean"] - 96.91) < 0.5
+    assert abs(adv["precision"]["mean"] - 97.05) < 0.5
+    assert abs(adv["recall"]["mean"] - 96.77) < 0.5
+    assert abs(adv["f1"]["mean"] - 96.91) < 0.5
+    assert abs(adv["roc_auc"]["mean"] - 0.9896) < 0.005
+
+    assert "not fitted" in body["note"]
+
+
+def test_yield_level_cross_validation_project_book_reference_present():
+    resp = client.get("/api/evaluation/yield-level/cross-validation")
+    assert resp.status_code == 200
+    body = resp.json()
+    by_var = {m["variant"]: m for m in body["models"]}
+    # Project Book Table 4.9 reference values must be present exactly.
+    fe_ref = by_var["feature_engineering"]["project_book_reference"]
+    assert abs(fe_ref["accuracy"][0] - 92.54) < 1e-9
+    assert abs(fe_ref["roc_auc"][0] - 0.9830) < 1e-9
+
+    adv_ref = by_var["advanced"]["project_book_reference"]
+    assert abs(adv_ref["accuracy"][0] - 96.79) < 1e-9
+    assert abs(adv_ref["roc_auc"][0] - 0.9897) < 1e-9
+    assert adv_ref["accuracy"] == [96.79, 0.34]

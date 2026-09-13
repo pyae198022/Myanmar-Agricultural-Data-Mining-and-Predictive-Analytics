@@ -1,0 +1,21 @@
+{
+  "source": "Project Book",
+  "chapter": "4.3",
+  "notes": [
+    "These values are copied from the Project Book as a reference only.",
+    "They are not used for clustering, label assignment, or any computed metric in the app."
+  ],
+  "overall_silhouette": 0.053,
+  "per_cluster": [
+    { "cluster_id": 0, "mean_silhouette": 0.0711, "quality": "Weak" },
+    { "cluster_id": 1, "mean_silhouette": -0.0075, "quality": "Poor" },
+    { "cluster_id": 2, "mean_silhouette": 0.2514, "quality": "Weak" },
+    { "cluster_id": 3, "mean_silhouette": 0.1996, "quality": "Weak" },
+    { "cluster_id": 4, "mean_silhouette": -0.0578, "quality": "Poor" },
+    { "cluster_id": 5, "mean_silhouette": -0.2042, "quality": "Poor" },
+    { "cluster_id": 6, "mean_silhouette": -0.1822, "quality": "Poor" },
+    { "cluster_id": 7, "mean_silhouette": 0.4484, "quality": "Fair" }
+  ],
+  "table_name": "Cluster Compactness (Silhouette Coefficient per Cluster)"
+}
+

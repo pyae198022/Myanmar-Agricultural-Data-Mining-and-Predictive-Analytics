@@ -234,6 +234,58 @@ def get_descriptive_mining():
     return descriptive_mining_report()
 
 
+# ─── Clustering Analysis ──────────────────────────────────────────────────────
+
+@router.get("/clustering/overview")
+def get_clustering_overview():
+    """
+    Return the K-Means clustering overview computed from the real bundled dataset.
+
+    Uses the Project Book methodology:
+      - exact Chapter 3.1.6 input features
+      - log1p on the specified skewed features
+      - Min-Max scaling to [0, 1]
+      - KMeans with random_state=42 and n_init=10
+      - final configured K = 8
+    """
+    from app.services.clustering import clustering_overview
+
+    return clustering_overview()
+
+
+@router.get("/clustering/optimal-k")
+def get_clustering_optimal_k():
+    """
+    Return inertia and silhouette results for candidate K values 2 through 10,
+    plus the configured final selection K=8.
+    """
+    from app.services.clustering import clustering_optimal_k
+
+    return clustering_optimal_k()
+
+
+@router.get("/clustering/profiles")
+def get_clustering_profiles():
+    """
+    Return cluster counts, percentages, numeric means, dominant categorical
+    attributes, and generated interpretation rules for each cluster.
+    """
+    from app.services.clustering import clustering_profiles
+
+    return clustering_profiles()
+
+
+@router.get("/clustering/evaluation")
+def get_clustering_evaluation():
+    """
+    Return overall and per-cluster silhouette statistics for the final K=8
+    clustering result, derived from the normalized feature matrix.
+    """
+    from app.services.clustering import clustering_evaluation
+
+    return clustering_evaluation()
+
+
 # ─── Chapter 4 ROC / AUC Evaluation (Crop Type) ──────────────────────────────
 
 @router.get("/evaluation/roc")
@@ -272,3 +324,82 @@ def get_roc_evaluation(variant: str = "baseline"):
         "report": report,
         "summary": summary,
     }
+
+
+# ─── Crop Yield Evaluation (Actual vs Predicted / CV / Explainability) ──────
+
+@router.get("/evaluation/crop-yield/actual-vs-predicted")
+def get_crop_yield_actual_vs_predicted(variant: str = "feature_engineering"):
+    """
+    Return REAL actual-vs-predicted points for a Crop Yield variant, computed
+    from the held-out 2023 test set with the deployed model + exact
+    preprocessing pipeline. Metrics (R² / RMSE / MAE) are derived from the
+    actuals and predictions. Unavailable variants are reported, not fabricated.
+    """
+    from app.services.crop_yield_evaluation import actual_vs_predicted
+
+    return actual_vs_predicted(variant=variant)
+
+
+@router.get("/evaluation/crop-yield/cross-validation")
+def get_crop_yield_cross_validation():
+    """
+    Return the Project Book's documented NN cross-validation reference values
+    for Crop Yield, plus a clear note that the deployed Random Forest artifacts
+    were not subjected to the same rigorous CV procedure (no invented RF rows).
+    """
+    from app.services.crop_yield_evaluation import cross_validation
+
+    return cross_validation()
+
+
+@router.get("/evaluation/crop-yield/feature-importance")
+def get_crop_yield_feature_importance(variant: str = "advanced"):
+    """
+    Return native feature importance from a deployed Crop Yield Random Forest
+    model, mapped to readable source features. SHAP is not fabricated here.
+    Unavailable variants are reported, not invented.
+    """
+    from app.services.crop_yield_evaluation import feature_importance
+
+    return feature_importance(variant=variant)
+
+
+# ─── Crop Yield Level Evaluation (binary ROC/AUC + 5-Fold Stratified CV) ─────
+
+@router.get("/evaluation/yield-level/roc")
+def get_yield_level_roc(variant: str = "feature_engineering"):
+    """
+    Standard BINARY ROC curve + AUC for a Yield Level model, computed from the
+    DEPLOYED MLP artifact on the real 2023 (495-row) hold-out test set.
+    pos_label='High'. One-vs-Rest is NOT used (Yield Level is binary; OvR is
+    only for the 33-class Crop Type task). Baseline is guarded and reported
+    unavailable rather than fabricated.
+    """
+    from app.services.yield_level_evaluation import test_set_roc_auc
+
+    return test_set_roc_auc(variant=variant)
+
+
+@router.get("/evaluation/yield-level/roc/available")
+def get_yield_level_roc_available():
+    """Report which Yield Level variants expose real ROC/AUC data."""
+    from app.services.yield_level_evaluation import roc_availability
+
+    return {"task": "Crop Yield Level", "models": roc_availability()}
+
+
+@router.get("/evaluation/yield-level/cross-validation")
+def get_yield_level_cross_validation(random_seed: int = 42, n_splits: int = 5):
+    """
+    Real 5-Fold Stratified Cross-Validation for the Yield Level classification
+    task, computed ONLY on the 2012-2022 training rows (2023 hold-out excluded).
+    The FE and Advanced MLPs are re-fitted per fold with the documented
+    deterministic hyperparameters; association rules are mined from the training
+    rows each CV run uses. Reports Accuracy / Precision / Recall / F1 / ROC-AUC
+    as Mean +/- Std, plus the Project Book Table 4.9 reference for comparison.
+    Baseline is excluded (leakage-guarded). Values are real, not fitted.
+    """
+    from app.services.yield_level_evaluation import cross_validation
+
+    return cross_validation(random_seed=random_seed, n_splits=n_splits)

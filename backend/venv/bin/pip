@@ -1,6 +1,4 @@
-#!/bin/sh
-'''exec' "/Users/pyaesone/Documents/Data mining project(Agri)/agri-decision-support/backend/venv/bin/python3.12" "$0" "$@"
-' '''
+#!/Users/pyaesone/Projects/agri-decision-support/backend/venv/bin/python3.12
 # -*- coding: utf-8 -*-
 import re
 import sys
